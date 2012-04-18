@@ -16,7 +16,7 @@ init( { _Any, http }, Req, [] ) ->
         end.
 
 handle( Req, S ) ->
-	{ ok, Html } = file:read_file( "./test.html" ),
+	{ ok, Html } = file:read_file( "./client.html" ),
 	
 	Headers = [
 		{ <<"Content-Type">>, <<"text/html">> }
@@ -41,7 +41,6 @@ websocket_handle( _, Req, S ) ->
 
 websocket_info( ping, Req, State ) ->
 	{ reply, { text, <<"{ \"author\":\"Server\", \"body\":\"Ping!\" }">> }, Req, State, hibernate };
-
 websocket_info( _Msg, Req, State ) ->
 	{ ok, Req, State, hibernate }.
 

@@ -17,7 +17,7 @@ function connect()
 	
 	authorName = $( '#chatbox #author-name' ).val();
 
-	connection = new WebSocket( 'ws://localhost:8080/websocket' );
+	connection = new WebSocket( 'ws://localhost:8080/' );
 	
 	// When the connection is open, send some data to the server
 	connection.onopen = function()
