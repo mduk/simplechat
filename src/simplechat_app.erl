@@ -4,19 +4,20 @@
 -export( [ start/2, stop/1 ] ).
 
 start( _StartType, _StartArgs ) ->
-	DispatchRules = [
-		{ '_', [
-			{ [ <<"websocket">> ], wshandler, [] },
-			{ '_', handler, [] }
-		] }
-	],
-
-	{ ok, Pid } = cowboy:start_listener( http, 10, 
-		cowboy_tcp_transport, [ { port, 8080 } ],
-		cowboy_http_protocol, [ { dispatch, DispatchRules } ]
-	),
-	
-	ok.
+	start_http(),
+	simplechat_sup:start_link().
 
 stop( _State ) ->
 	ok.
+
+start_http() ->
+	HttpDispatchRules = [
+		{ '_', [ % Any Host
+			{ '_', wshandler, [] } % Any Path
+		] }
+	],
+
+	cowboy:start_listener( http, 10, 
+		cowboy_tcp_transport, [ { port, 8080 } ],
+		cowboy_http_protocol, [ { dispatch, HttpDispatchRules } ] 
+	).
