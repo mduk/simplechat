@@ -1,0 +1,197 @@
+<html>
+
+<head>
+	<script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="http://meyerweb.com/eric/tools/css/reset/reset.css" />
+</head>
+
+<body>
+
+<script type="text/javascript">
+
+var connection, authorName;
+
+function connect()
+{
+	console.log( "Connecting... " );
+	
+	authorName = $( '#chatbox #author-name' ).val();
+
+	connection = new WebSocket( 'ws://localhost:8080/websocket' );
+	
+	// When the connection is open, send some data to the server
+	connection.onopen = function()
+	{
+		console.log( "Connected." );
+		
+		$( '#chatbox .toolbar form' ).toggle();
+
+		$( '#chatbox .timeline' ).append(
+			'<li class="event">Connected as ' + authorName + '</li>'
+		);
+
+		//connection.send( 'Connected!' );
+
+		connection.send( JSON.stringify( {
+			author: 'Client',
+			body: 'Connected!'
+		} ) );
+	};
+	
+	// Log errors
+	connection.onerror = function( error )
+	{
+		$( '#chatbox .timeline' ).append(
+			'<li class="error">A WebSocket error occured! See console.</li>'
+		);
+		console.log( 'WebSocket Error!' );
+		console.log( error );
+	};
+	
+	// Log messages from the server
+	connection.onmessage = function( wsMsg )
+	{
+		console.log( wsMsg );
+		var data = JSON.parse( wsMsg.data );
+	
+		var author = $( '<span class="author">' + data.author + '</span>' );
+		var body = $( '<span class="body">' + data.body + '</span>' );	
+		var message = $( '<li class="message"/>' )
+			.append( author )
+			.append( body );
+	
+		$( '#chatbox .timeline' ).append( message );
+	};
+	
+	// Log Disconnection
+	connection.onclose = function( event )
+	{
+		console.log( event );
+		$( '#chatbox .toolbar form' ).toggle();
+
+		$( '#chatbox .timeline' ).append(
+			'<li class="event">Disconnected</li>'
+		);
+	};
+}
+
+function disconnect()
+{
+	connection.close();
+}
+
+function send()
+{
+	var elem = document.getElementById( "text-input" );
+	connection.send( JSON.stringify( {
+		author: authorName,
+		body: elem.value
+	} ) );
+	elem.value = "";
+	return false;
+}
+
+</script>
+
+<style type="text/css">
+
+.chatbox {
+	width: 50%;
+	padding: 0;
+	margin: auto;
+	border: 1px black solid;
+	font-family: verdana, sans-serif;
+	box-shadow: 0 0 16px 0 #ccc;
+}
+
+.chatbox .toolbar {
+	border-bottom: 1px black solid;
+	box-shadow: 0 0 16px 0 #ccc;
+}
+
+.chatbox .toolbar {
+	padding: 1em;
+}
+
+.chatbox .toolbar form.connect {
+	display: block;
+}
+
+.chatbox .toolbar form.disconnect {
+	display: none;
+}
+
+.chatbox .timeline {
+	padding: 1em 0 0 0;
+}
+
+.chatbox .timeline li {
+	margin-bottom: 0.3em;
+	padding: 0.5em;
+}
+
+.chatbox .timeline .error {
+	font-weight: bold;
+	background: #ff5A40;
+	color: white;
+	border-top: 1px solid red;
+	border-bottom: 1px solid red;
+}
+
+.chatbox .timeline .event {
+	font-style: italic;
+	background: #ffe440;
+	border-top: 1px solid grey;
+	border-bottom: 1px solid grey;
+}
+
+.chatbox .timeline .message {
+}
+
+.chatbox .timeline .message .author {
+	font-weight: bold;
+	padding-right: 1em;
+}
+
+.chatbox .input-area {
+	border-top: 1px black solid;
+}
+
+.chatbox .input-area .text-input {
+	width: 89%;
+	height: 5em;
+	margin: 0;
+}
+
+.chatbox .input-area .send-button {
+	width: 9%;
+	height: 5em;
+	margin: 0;
+	border: 0;
+}
+
+</style>
+
+<div id="chatbox" class="chatbox">
+	<div class="toolbar">
+		<form onsubmit="event.preventDefault(); connect()" class="connect">
+			<input type="text" id="author-name" value="Guest"/>
+			<input type="submit" value="Connect"/>
+		</form>
+		<form onsubmit="event.preventDefault(); disconnect()" class="disconnect">
+			<input type="submit" value="Disconnect"/>
+		</form>
+	</div>
+	<ul class="timeline"></ul>
+	<div class="input-area">
+		<form onsubmit="event.preventDefault(); send()">
+			<input type="text" id="text-input" class="text-input"/>
+			<input type="submit" value="Send" class="send-button"/>
+		</form>
+	</div>
+</div>
+
+</body>
+
+</html>
+
