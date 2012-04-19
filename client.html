@@ -17,7 +17,7 @@ function connect()
 	
 	authorName = $( '#chatbox #author-name' ).val();
 
-	connection = new WebSocket( 'ws://localhost:8080/' );
+	connection = new WebSocket( 'ws://' + window.location.host + '/' );
 	
 	// When the connection is open, send some data to the server
 	connection.onopen = function()
@@ -29,13 +29,6 @@ function connect()
 		$( '#chatbox .timeline' ).append(
 			'<li class="event">Connected as ' + authorName + '</li>'
 		);
-
-		//connection.send( 'Connected!' );
-
-		connection.send( JSON.stringify( {
-			author: 'Client',
-			body: 'Connected!'
-		} ) );
 	};
 	
 	// Log errors
@@ -84,6 +77,7 @@ function send()
 {
 	var elem = document.getElementById( "text-input" );
 	connection.send( JSON.stringify( {
+		type: 'message',
 		author: authorName,
 		body: elem.value
 	} ) );
@@ -96,7 +90,7 @@ function send()
 <style type="text/css">
 
 .chatbox {
-	width: 50%;
+	width: 600px;
 	padding: 0;
 	margin: auto;
 	border: 1px black solid;

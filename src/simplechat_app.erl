@@ -5,7 +5,10 @@
 
 start( _StartType, _StartArgs ) ->
 	start_http(),
-	simplechat_sup:start_link().
+	{ ok, Sup } = simplechat_sup:start_link(),
+	{ ok, RoomPid } = simplechat_room_sup:start_room( default ),
+	register( default_room, RoomPid ),
+	{ ok, Sup }.
 
 stop( _State ) ->
 	ok.
@@ -13,7 +16,7 @@ stop( _State ) ->
 start_http() ->
 	HttpDispatchRules = [
 		{ '_', [ % Any Host
-			{ '_', wshandler, [] } % Any Path
+			{ [], wshandler, [] } % / -> wshandler
 		] }
 	],
 
