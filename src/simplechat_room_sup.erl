@@ -13,4 +13,4 @@ init( _ ) ->
 	
 start_room( Id ) ->
 	io:format( "Creating room: ~s~n", [ Id ] ),
-	supervisor:start_child( ?MODULE, { Id, { gen_event, start_link, [] }, permanent, 5000, worker, [ gen_event ] } ).
+	supervisor:start_child( ?MODULE, { Id, { simplechat_room, start_link, [] }, permanent, 5000, worker, [ simplechat_room ] } ).

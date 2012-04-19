@@ -38,7 +38,7 @@ terminate( _, _ ) ->
 websocket_init( _, Req, [] ) ->
 	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
 	io:format( "User ~p connecting via websocket ~p~n", [ PeerIp, self() ] ),
-	gen_event:add_handler( default_room, simplechat_room_handler, self() ),
+	simplechat_room:join( default_room ),
 	{ ok, cowboy_http_req:compact( Req ), #state{}, hibernate }.
 
 % Send messages received straight back to the websocket client
@@ -67,7 +67,7 @@ websocket_info( _Msg, Req, State ) ->
 websocket_terminate( _Reason, Req, #state{} ) ->
 	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
 	io:format( "User ~p closed websocket connection~n", [ PeerIp ] ),
-	gen_event:delete_handler( default_room, simplechat_room_handler, self() ),
+	simplechat_room:part( default_room ),
 	ok.
 
 % Private functions
@@ -79,6 +79,12 @@ parse_message( { struct, Props } ) ->
 		{ _, TypeBin } -> binary_to_atom( TypeBin, utf8 )
 	end,
 	parse_message( { Type, Props } );
+parse_message( { join, Props } ) ->
+	{ _, Room } = proplists:lookup( <<"room">>, Props ),
+	{ join, Room };
+parse_message( { part, Props } ) ->
+	{ _, Room } = proplists:lookup( <<"room">>, Props ),
+	{ part, Room };
 parse_message( { message, Props } ) ->
 	{ _, Author } = proplists:lookup( <<"author">>, Props ),
         { _, Body } = proplists:lookup( <<"body">>, Props ),
@@ -87,6 +93,18 @@ parse_message( JsonBin ) ->
         parse_message( mochijson2:decode( JsonBin ) ).
 
 % Encode a message into it's json representation
+encode_message( { joined, User, Room } ) ->
+	mochijson2:encode( { struct, [
+		{ <<"type">>, <<"joined">> },
+		{ <<"user">>, User },
+		{ <<"room">>, Room }
+	] } );
+encode_message( { parted, User, Room } ) ->
+	mochijson2:encode( { struct, [
+		{ <<"type">>, <<"parted">> },
+		{ <<"user">>, User },
+		{ <<"room">>, Room }
+	] } );
 encode_message( { message, Author, Body } ) ->
 	mochijson2:encode( { struct, [
 		{ <<"type">>, <<"message">> },
