@@ -1,4 +1,4 @@
--module( wshandler ).
+-module( simplechat_wshandler ).
 
 -behaviour( cowboy_http_handler ).
 -export( [ init/3, handle/2, terminate/2 ] ).
@@ -6,7 +6,7 @@
 -behaviour( cowboy_http_websocket_handler ).
 -export( [ websocket_init/3, websocket_handle/3, websocket_info/3, websocket_terminate/3 ] ).
 
--record( state, { client } ).
+-record( state, { } ).
 
 % Behaviour: cowboy_http_handler
 
@@ -64,10 +64,10 @@ websocket_info( { send, Message }, Req, State ) ->
 websocket_info( _Msg, Req, State ) ->
 	{ ok, Req, State, hibernate }.
 
-websocket_terminate( _Reason, Req, #state{ client = Client } ) ->
+websocket_terminate( _Reason, Req, #state{} ) ->
 	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
 	io:format( "User ~p closed websocket connection~n", [ PeerIp ] ),
-	simplechat_client:quit( Client ),
+	gen_event:delete_handler( default_room, simplechat_client_room_handler, self() ),
 	ok.
 
 % Private functions

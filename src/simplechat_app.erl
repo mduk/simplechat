@@ -16,7 +16,7 @@ stop( _State ) ->
 start_http() ->
 	HttpDispatchRules = [
 		{ '_', [ % Any Host
-			{ [], wshandler, [] } % / -> wshandler
+			{ [], simplechat_wshandler, [] } % / -> simplechat_wshandler
 		] }
 	],
 
