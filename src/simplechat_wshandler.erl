@@ -38,7 +38,7 @@ terminate( _, _ ) ->
 websocket_init( _, Req, [] ) ->
 	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
 	io:format( "User ~p connecting via websocket ~p~n", [ PeerIp, self() ] ),
-	gen_event:add_handler( default_room, simplechat_client_room_handler, self() ),
+	gen_event:add_handler( default_room, simplechat_room_handler, self() ),
 	{ ok, cowboy_http_req:compact( Req ), #state{}, hibernate }.
 
 % Send messages received straight back to the websocket client
@@ -67,7 +67,7 @@ websocket_info( _Msg, Req, State ) ->
 websocket_terminate( _Reason, Req, #state{} ) ->
 	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
 	io:format( "User ~p closed websocket connection~n", [ PeerIp ] ),
-	gen_event:delete_handler( default_room, simplechat_client_room_handler, self() ),
+	gen_event:delete_handler( default_room, simplechat_room_handler, self() ),
 	ok.
 
 % Private functions
