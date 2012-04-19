@@ -29,6 +29,11 @@ function connect()
 		$( '#chatbox .timeline' ).append(
 			'<li class="event">Connected as ' + authorName + '</li>'
 		);
+
+		connection.send( JSON.stringify( {
+			type: "ident",
+			name: authorName
+		} ) );
 	};
 	
 	// Log errors

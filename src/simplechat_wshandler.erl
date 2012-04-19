@@ -6,7 +6,7 @@
 -behaviour( cowboy_http_websocket_handler ).
 -export( [ websocket_init/3, websocket_handle/3, websocket_info/3, websocket_terminate/3 ] ).
 
--record( state, { } ).
+-record( state, { name } ).
 
 % Behaviour: cowboy_http_handler
 
@@ -43,15 +43,18 @@ websocket_init( _, Req, [] ) ->
 
 % Send messages received straight back to the websocket client
 websocket_handle( { text, Msg }, Req, State ) ->
-	
 	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
 	io:format( "User ~p sent ~p over websocket~n", [ PeerIp, Msg ] ),
-	
-	Parsed = parse_message( Msg ),
-	io:format( "Casting to room ~p: ~p~n", [ whereis( default_room ), Parsed ] ),
-	gen_event:notify( default_room, Parsed ),
-	
-	{ ok, Req, State, hibernate };
+	NewState = case parse_message( Msg ) of
+		{ ident, Name } -> 
+			io:format( "User ~p identified as ~p~n", [ PeerIp, Name ] ),
+			State#state{ name = Name };
+		Parsed ->
+			io:format( "Casting to room ~p: ~p~n", [ whereis( default_room ), Parsed ] ),
+			gen_event:notify( default_room, Parsed ),
+			State
+	end,
+	{ ok, Req, NewState, hibernate };
 websocket_handle( _, Req, S ) ->
 	{ ok, Req, S }.
 
@@ -79,6 +82,9 @@ parse_message( { struct, Props } ) ->
 		{ _, TypeBin } -> binary_to_atom( TypeBin, utf8 )
 	end,
 	parse_message( { Type, Props } );
+parse_message( { ident, Props } ) ->
+	{ _, Name } = proplists:lookup( <<"name">>, Props ),
+	{ ident, Name };
 parse_message( { join, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
 	{ join, Room };
