@@ -11,7 +11,7 @@
 
 var connection, authorName;
 
-function connect()
+function connect( callback )
 {
 	console.log( "Connecting... " );
 	
@@ -30,10 +30,12 @@ function connect()
 			'<li class="event">Connected as ' + authorName + '</li>'
 		);
 
-		connection.send( JSON.stringify( {
+		cmd( {
 			type: "ident",
 			name: authorName
-		} ) );
+		} );
+
+		callback();
 	};
 	
 	// Log errors
@@ -73,22 +75,72 @@ function connect()
 	};
 }
 
+function cmd( Data )
+{
+	connection.send( JSON.stringify( Data ) );
+}
+
 function disconnect()
 {
 	connection.close();
 }
 
-function send()
+function join( Room )
 {
-	var elem = document.getElementById( "text-input" );
-	connection.send( JSON.stringify( {
-		type: 'say',
-		room: 'default_room',
-		body: elem.value
-	} ) );
-	elem.value = "";
-	return false;
+	cmd( {
+		type: 'join',
+		room: Room
+	} );
 }
+
+function part( Room )
+{
+	cmd( {
+		type: 'part',
+		room: Room
+	} );
+}
+
+function say( Room, Message )
+{
+	cmd( {
+		type: 'say',
+		room: Room,
+		body: Message
+	} );
+}
+
+// Form Handlers
+$( document ).ready( function()
+{
+	$( 'form.connect' ).submit( function( event )
+	{
+		event.preventDefault();
+		connect( function()
+		{
+			join( 'default_room' );
+		} );
+	} );
+	
+	$( 'form.disconnect' ).submit( function( event )
+	{
+		event.preventDefault();
+		part( 'default_room' );
+		disconnect();
+	} );
+
+	$( 'form.message' ).submit( function( event )
+	{
+		event.preventDefault();
+		var elem = $( 'form.message #text-input' );
+		cmd( {
+			type: 'say',
+			room: 'default_room',
+			body: elem.val()
+		} );
+		elem.val( '' );
+	} );
+} );
 
 </script>
 
@@ -173,17 +225,17 @@ function send()
 
 <div id="chatbox" class="chatbox">
 	<div class="toolbar">
-		<form onsubmit="event.preventDefault(); connect()" class="connect">
+		<form class="connect">
 			<input type="text" id="author-name" value="Guest"/>
 			<input type="submit" value="Connect"/>
 		</form>
-		<form onsubmit="event.preventDefault(); disconnect()" class="disconnect">
+		<form class="disconnect">
 			<input type="submit" value="Disconnect"/>
 		</form>
 	</div>
 	<ul class="timeline"></ul>
 	<div class="input-area">
-		<form onsubmit="event.preventDefault(); send()">
+		<form class="message">
 			<input type="text" id="text-input" class="text-input"/>
 			<input type="submit" value="Send" class="send-button"/>
 		</form>

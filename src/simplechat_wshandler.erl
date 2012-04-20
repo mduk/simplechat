@@ -38,7 +38,6 @@ terminate( _, _ ) ->
 websocket_init( _, Req, [] ) ->
 	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
 	io:format( "User ~p connecting via websocket ~p~n", [ PeerIp, self() ] ),
-	simplechat_room:join( default_room ),
 	{ ok, cowboy_http_req:compact( Req ), #state{}, hibernate }.
 
 % Send messages received straight back to the websocket client
@@ -46,13 +45,26 @@ websocket_handle( { text, Msg }, Req, State ) ->
 	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
 	io:format( "User ~p sent ~p over websocket~n", [ PeerIp, Msg ] ),
 	NewState = case parse_message( Msg ) of
+		
 		{ ident, Name } -> 
 			io:format( "User ~p identified as ~p~n", [ PeerIp, Name ] ),
 			State#state{ name = Name };
+		
+		{ join, Room } ->
+			io:format( "User ~p (~s) joins ~p~n", [ PeerIp, State#state.name, Room ] ),
+			simplechat_room:join( binary_to_atom( Room, utf8 ) ),
+			State;
+		
+		{ part, Room } ->
+			io:format( "User ~p (~s) parts ~p~n", [ PeerIp, State#state.name, Room ] ),
+			simplechat_room:part( binary_to_atom( Room, utf8 ) ),
+			State;
+
 		{ say, Room, Message } ->
 			io:format( "User ~p (~s) says ~p to ~p~n", [ PeerIp, State#state.name, Message, Room ] ),
 			simplechat_room:say( binary_to_atom( Room, utf8 ), State#state.name, Message ),
 			State;
+		
 		Parsed ->
 			io:format( "Casting to room ~p: ~p~n", [ whereis( default_room ), Parsed ] ),
 			gen_event:notify( default_room, Parsed ),
