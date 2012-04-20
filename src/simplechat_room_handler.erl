@@ -8,10 +8,10 @@ init( ClientPid ) ->
 
 handle_event( Message, ClientPid ) ->
 	io:format( 
-		"Relaying ~p from room ~p to websocket ~p.~n", 
-		[ Message, self(), ClientPid ] 
+		"~p Relaying ~p to client ~p.~n", 
+		[ self(), Message, ClientPid ] 
 	),
-	ClientPid ! { send, Message },
+	gen_server:cast( ClientPid, Message ),
 	{ ok, ClientPid }.
 
 handle_call( _Msg, State ) ->

@@ -13,6 +13,7 @@ start_link() ->
 
 join( Room ) ->
 %	gen_server:call( Room, { join, self() } ).
+	io:format( "~p is joining ~p~n", [ self(), Room ] ),
 	gen_event:add_handler( Room, simplechat_room_handler, self() ).
 
 part( Room ) ->
@@ -24,7 +25,6 @@ say( Room, Author, Message ) ->
 %	gen_server:cast( Room, { message, Author, Message } ).
 	gen_event:notify( Room, { message, Author, Message } ).
 
-
 % Behaviour: gen_server
 
 init( _ ) ->
@@ -33,11 +33,9 @@ init( _ ) ->
 
 handle_call( { join, ClientPid }, _, State ) ->
 	gen_event:add_handler( State#state.event, simplechat_room_handler, ClientPid ),
-%	gen_event:notify( State#state.event, { joined } ),
 	{ reply, ok, State };
 handle_call( { part, ClientPid }, _, State ) ->
 	gen_event:delete_handler( State#state.event, simplechat_room_handler, ClientPid ),
-%	gen_event:notify( State#state.event, { parted } ),
 	{ reply, ok, State };
 handle_call( _Msg, _From, State ) ->
 	{ reply, unknown_call, State }.
