@@ -7,143 +7,6 @@
 
 <body>
 
-<script type="text/javascript">
-
-var connection, authorName;
-
-function connect( callback )
-{
-	console.log( "Connecting... " );
-	
-	authorName = $( '#chatbox #author-name' ).val();
-
-	connection = new WebSocket( 'ws://' + window.location.host + '/' );
-	
-	// When the connection is open, send some data to the server
-	connection.onopen = function()
-	{
-		console.log( "Connected." );
-		
-		$( '#chatbox .toolbar form' ).toggle();
-
-		$( '#chatbox .timeline' ).append(
-			'<li class="event">Connected as ' + authorName + '</li>'
-		);
-
-		cmd( {
-			type: "ident",
-			name: authorName
-		} );
-
-		callback();
-	};
-	
-	// Log errors
-	connection.onerror = function( error )
-	{
-		$( '#chatbox .timeline' ).append(
-			'<li class="error">A WebSocket error occured! See console.</li>'
-		);
-		console.log( 'WebSocket Error!' );
-		console.log( error );
-	};
-	
-	// Log messages from the server
-	connection.onmessage = function( wsMsg )
-	{
-		console.log( wsMsg );
-		var data = JSON.parse( wsMsg.data );
-	
-		var author = $( '<span class="author">' + data.author + '</span>' );
-		var body = $( '<span class="body">' + data.body + '</span>' );	
-		var message = $( '<li class="message"/>' )
-			.append( author )
-			.append( body );
-	
-		$( '#chatbox .timeline' ).append( message );
-	};
-	
-	// Log Disconnection
-	connection.onclose = function( event )
-	{
-		console.log( event );
-		$( '#chatbox .toolbar form' ).toggle();
-
-		$( '#chatbox .timeline' ).append(
-			'<li class="event">Disconnected</li>'
-		);
-	};
-}
-
-function cmd( Data )
-{
-	connection.send( JSON.stringify( Data ) );
-}
-
-function disconnect()
-{
-	connection.close();
-}
-
-function join( Room )
-{
-	cmd( {
-		type: 'join',
-		room: Room
-	} );
-}
-
-function part( Room )
-{
-	cmd( {
-		type: 'part',
-		room: Room
-	} );
-}
-
-function say( Room, Message )
-{
-	cmd( {
-		type: 'say',
-		room: Room,
-		body: Message
-	} );
-}
-
-// Form Handlers
-$( document ).ready( function()
-{
-	$( 'form.connect' ).submit( function( event )
-	{
-		event.preventDefault();
-		connect( function()
-		{
-			join( 'default_room' );
-		} );
-	} );
-	
-	$( 'form.disconnect' ).submit( function( event )
-	{
-		event.preventDefault();
-		part( 'default_room' );
-		disconnect();
-	} );
-
-	$( 'form.message' ).submit( function( event )
-	{
-		event.preventDefault();
-		var elem = $( 'form.message #text-input' );
-		cmd( {
-			type: 'say',
-			room: 'default_room',
-			body: elem.val()
-		} );
-		elem.val( '' );
-	} );
-} );
-
-</script>
-
 <style type="text/css">
 
 .chatbox {
@@ -222,6 +85,204 @@ $( document ).ready( function()
 }
 
 </style>
+
+<script type="text/javascript">
+
+/**
+ * Chat client class
+ */
+var Client = function( wsUrl )
+{
+	var
+	
+		/**
+		 * The websocket handler URL
+		 */
+		wsUrl,
+		
+		/**
+		 * The Websocket handle
+		 */
+		connection,
+		
+		/**
+		 * The user's name
+		 */
+		authorName;
+	
+	/**
+	 * Send a command (object with type property) down the connection
+	 */
+	function cmd( Data )
+	{
+		connection.send( JSON.stringify( Data ) );
+	}
+
+	/**
+	 * Connect to the simplechat websocket handler
+	 */
+	this.connect = function( callback )
+	{
+		console.log( "Connecting... " );
+	
+		authorName = $( '#chatbox #author-name' ).val();
+	
+		connection = new WebSocket( wsUrl );
+		
+		/**
+		 * When the connection is opened, hide the connect form and
+		 * display the disconnect form and send the ident command to 
+		 * the server.
+		 */
+		connection.onopen = function()
+		{
+			console.log( "Connected." );
+			
+			$( '#chatbox .toolbar form' ).toggle();
+	
+			$( '#chatbox .timeline' ).append(
+				'<li class="event">Connected as ' + authorName + '</li>'
+			);
+	
+			cmd( {
+				type: "ident",
+				name: authorName
+			} );
+	
+			callback();
+		};
+		
+		/**
+		 * When an error occurs, display an error entry in the timeline
+		 * and log the error to the console.
+		 */
+		connection.onerror = function( error )
+		{
+			$( '#chatbox .timeline' ).append(
+				'<li class="error">A WebSocket error occured! See console.</li>'
+			);
+			console.log( 'WebSocket Error!' );
+			console.log( error );
+		};
+		
+		/**
+		 * When a ws-message is received, decode the json payload and 
+		 * display the message in the timeline.
+		 */
+		connection.onmessage = function( wsMsg )
+		{
+			console.log( wsMsg );
+			var data = JSON.parse( wsMsg.data );
+		
+			var author = $( '<span class="author">' + data.author + '</span>' );
+			var body = $( '<span class="body">' + data.body + '</span>' );	
+			var message = $( '<li class="message"/>' )
+				.append( author )
+				.append( body );
+		
+			$( '#chatbox .timeline' ).append( message );
+		};
+		
+		/**
+		 * When the websocket closes, display a notice in the timeline, 
+		 * hide the disconnect form and display the connect one.
+		 */
+		connection.onclose = function( event )
+		{
+			console.log( event );
+			$( '#chatbox .toolbar form' ).toggle();
+	
+			$( '#chatbox .timeline' ).append(
+				'<li class="event">Disconnected</li>'
+			);
+		};
+	};
+
+	/**
+	 * Disconnect from the simplechat server. Closes the websocket.
+	 */
+	this.disconnect = function()
+	{
+		connection.close();
+	};
+	
+	/**
+	 * Join a chat room.
+	 */
+	this.join = function( Room )
+	{
+		cmd( {
+			type: 'join',
+			room: Room
+		} );
+	};
+	
+	/**
+	 * Part a chat room.
+	 */
+	this.part = function( Room )
+	{
+		cmd( {
+			type: 'part',
+			room: Room
+		} );
+	};
+	
+	/**
+	 * Say something to a chat room
+	 */
+	this.say = function( Room, Message )
+	{
+		cmd( {
+			type: 'say',
+			room: Room,
+			body: Message
+		} );
+	};
+};
+
+/**
+ * Register form handlers
+ */
+$( document ).ready( function()
+{
+	var client = new Client( 'ws:/' + window.location.host + '/' );
+	
+	/**
+	 * Connect form handler
+	 */
+	$( 'form.connect' ).submit( function( event )
+	{
+		event.preventDefault();
+		client.connect( function()
+		{
+			client.join( 'default_room' );
+		} );
+	} );
+	
+	/**
+	 * Disconnect form handler
+	 */
+	$( 'form.disconnect' ).submit( function( event )
+	{
+		event.preventDefault();
+		client.part( 'default_room' );
+		client.disconnect();
+	} );
+
+	/**
+	 * Message form handler
+	 */
+	$( 'form.message' ).submit( function( event )
+	{
+		event.preventDefault();
+		var elem = $( 'form.message #text-input' );
+		client.say( 'default_room', elem.val() );
+		elem.val( '' );
+	} );
+} );
+
+</script>
 
 <div id="chatbox" class="chatbox">
 	<div class="toolbar">
