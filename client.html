@@ -82,8 +82,8 @@ function send()
 {
 	var elem = document.getElementById( "text-input" );
 	connection.send( JSON.stringify( {
-		type: 'message',
-		author: authorName,
+		type: 'say',
+		room: 'default_room',
 		body: elem.value
 	} ) );
 	elem.value = "";
