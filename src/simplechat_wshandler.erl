@@ -49,6 +49,10 @@ websocket_handle( { text, Msg }, Req, State ) ->
 		{ ident, Name } -> 
 			io:format( "User ~p identified as ~p~n", [ PeerIp, Name ] ),
 			State#state{ name = Name };
+		{ say, Room, Message } ->
+			io:format( "User ~p (~s) says ~p to ~p~n", [ PeerIp, State#state.name, Message, Room ] ),
+			simplechat_room:say( binary_to_atom( Room, utf8 ), State#state.name, Message ),
+			State;
 		Parsed ->
 			io:format( "Casting to room ~p: ~p~n", [ whereis( default_room ), Parsed ] ),
 			gen_event:notify( default_room, Parsed ),
@@ -91,10 +95,10 @@ parse_message( { join, Props } ) ->
 parse_message( { part, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
 	{ part, Room };
-parse_message( { message, Props } ) ->
-	{ _, Author } = proplists:lookup( <<"author">>, Props ),
+parse_message( { say, Props } ) ->
+	{ _, Room } = proplists:lookup( <<"room">>, Props ),
         { _, Body } = proplists:lookup( <<"body">>, Props ),
-	{ message, Author, Body };
+	{ say, Room, Body };
 parse_message( JsonBin ) ->
         parse_message( mochijson2:decode( JsonBin ) ).
 
