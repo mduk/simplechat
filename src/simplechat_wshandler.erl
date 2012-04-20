@@ -35,6 +35,7 @@ terminate( _, _ ) ->
 
 % Behaviour: cowboy_http_websocket_handler
 
+% Initialise websocket handler
 websocket_init( _, Req, [] ) ->
 	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
 	ClientId = { PeerIp, calendar:local_time() },
@@ -48,8 +49,6 @@ websocket_init( _, Req, [] ) ->
 
 % Received a message over the websocket
 websocket_handle( { text, Msg }, Req, State ) ->
-	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
-	
 	% Parse the JSON payload into a tuple and call it on the client
 	case gen_server:call( State#state.client_pid, parse_message( Msg ) ) of
 		unknown_call ->
@@ -75,8 +74,9 @@ websocket_info( { send, Message }, Req, State ) ->
 websocket_info( _Msg, Req, State ) ->
 	{ ok, Req, State, hibernate }.
 
-% Connection closed - kill the client process
+% Connection closed
 websocket_terminate( _Reason, _Req, State ) ->
+	% Kill the client process
 	simplechat_client_sup:terminate_client( State#state.client_id ),
 	ok.
 
