@@ -20,9 +20,9 @@ start_room( Name ) ->
 
 % Return a room pid by it's name, start the room if it isn't already
 room( Name ) ->
-	case supervisor:which_children( ?MODULE ) of
+	case proplists:lookup( Name, supervisor:which_children( ?MODULE ) ) of
 		{ Name, Pid, _, _ } -> { ok, Pid };
-		_                   -> start_room( Name )
+		none                -> start_room( Name )
 	end.
 
 % Get a list of active rooms
