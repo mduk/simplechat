@@ -32,6 +32,9 @@ init( ConnectionPid ) ->
 handle_cast( quit, State ) ->
 	io:format( "Client ~p quitting", [ self() ] ),
 	{ stop, quit, State };
+handle_cast( { Action, User, Room }, State ) when Action =:= joined; Action =:= parted ->
+	State#state.connection ! { send, { Action, User, Room } },
+	{ noreply, State };
 handle_cast( Msg = { message, _, _ }, State ) ->
 	State#state.connection ! { send, Msg },
 	{ noreply, State }.

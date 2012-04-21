@@ -11,6 +11,6 @@ start_link() ->
 init( _ ) ->
 	{ ok, { { one_for_one, 5, 10 }, [] } }.
 	
-start_room( Id ) ->
-	io:format( "Creating room: ~s~n", [ Id ] ),
-	supervisor:start_child( ?MODULE, { Id, { simplechat_room, start_link, [] }, permanent, 5000, worker, [ simplechat_room ] } ).
+start_room( Name ) ->
+	io:format( "Creating room: ~s~n", [ Name ] ),
+	supervisor:start_child( ?MODULE, { Name, { simplechat_room, start_link, [] }, permanent, 5000, worker, [ simplechat_room ] } ).

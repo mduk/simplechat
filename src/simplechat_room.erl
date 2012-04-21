@@ -8,22 +8,18 @@
 -record( state, { event, users } ).
 
 start_link() ->
-%	gen_server:start_link( ?MODULE, [], [] ).
-	gen_event:start_link().
+	gen_server:start_link( ?MODULE, [], [] ).
 
 join( Room ) ->
-%	gen_server:call( Room, { join, self() } ).
 	io:format( "~p is joining ~p~n", [ self(), Room ] ),
-	gen_event:add_handler( Room, simplechat_room_handler, self() ).
+	gen_server:call( Room, { join, self() } ).
 
 part( Room ) ->
-%	gen_server:call( Room, { part, self() } ).
 	io:format( "~p is parting ~p~n", [ self(), Room ] ),
-	gen_event:delete_handler( Room, simplechat_room_handler, self() ).
+	gen_server:call( Room, { part, self() } ).
 
 say( Room, Author, Message ) ->
-%	gen_server:cast( Room, { message, Author, Message } ).
-	gen_event:notify( Room, { message, Author, Message } ).
+	gen_server:cast( Room, { message, Author, Message } ).
 
 % Behaviour: gen_server
 
@@ -31,11 +27,19 @@ init( _ ) ->
 	{ ok, Pid } = gen_event:start_link(),
 	{ ok, #state{ event = Pid } }.
 
+% Client joins room
 handle_call( { join, ClientPid }, _, State ) ->
 	gen_event:add_handler( State#state.event, simplechat_room_handler, ClientPid ),
+	spawn( fun() -> 
+		gen_event:notify( State#state.event, { joined, simplechat_client:nick( ClientPid ), <<"default_room">> } ) 
+	end ),
 	{ reply, ok, State };
+% Client parts room
 handle_call( { part, ClientPid }, _, State ) ->
 	gen_event:delete_handler( State#state.event, simplechat_room_handler, ClientPid ),
+	spawn( fun() -> 
+		gen_event:notify( State#state.event, { parted, simplechat_client:nick( ClientPid ), <<"default_room">> } ) 
+	end ),
 	{ reply, ok, State };
 handle_call( _Msg, _From, State ) ->
 	{ reply, unknown_call, State }.
