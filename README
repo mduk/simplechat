@@ -2,7 +2,7 @@ SimpleChat
 ==========
 
 So far this project is mainly just an exercise for myself in using websockets with Erlang and Cowboy.
-It starts an HTTP listener on port 8080. Requests to all urls all result in the same thing. 
+It starts an HTTP listener on port 8080. Requests to all paths will result in the same thing. 
 There is only one handler, the websocket chatroom.
 
 Requests to http://localhost:8080/ are served the client.html file, which contains the chat client html, css and javascript.
