@@ -173,12 +173,25 @@ var Client = function( wsUrl )
 		{
 			console.log( wsMsg );
 			var data = JSON.parse( wsMsg.data );
-		
-			var author = $( '<span class="author">' + data.author + '</span>' );
-			var body = $( '<span class="body">' + data.body + '</span>' );	
-			var message = $( '<li class="message"/>' )
-				.append( author )
-				.append( body );
+			
+			switch ( data.type )
+			{
+				case 'message':
+					var author = $( '<span class="author">' + data.author + '</span>' );
+					var body = $( '<span class="body">' + data.body + '</span>' );	
+					var message = $( '<li class="message"/>' )
+						.append( author )
+						.append( body );
+					break;
+			
+				case 'joined':
+					var message = $( '<li class="event">' + data.user + ' connected</li>' );
+					break;
+			
+				case 'parted':
+					var message = $( '<li class="event">' + data.user + ' disconnected</li>' );
+					break;
+			}
 		
 			$( '#chatbox .timeline' ).append( message );
 		};
