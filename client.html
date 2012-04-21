@@ -251,7 +251,7 @@ var Client = function( wsUrl )
  */
 $( document ).ready( function()
 {
-	var client = new Client( 'ws:/' + window.location.host + '/' );
+	var client = new Client( 'ws://' + window.location.host + window.location.pathname );
 	
 	/**
 	 * Connect form handler
