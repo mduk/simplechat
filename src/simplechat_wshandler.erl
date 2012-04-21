@@ -57,7 +57,9 @@ websocket_handle( { text, Msg }, Req, State ) ->
 		ok ->
 			{ ok, Req, State, hibernate };
 		Any ->
-			Reply = encode_message( { error, io_lib:format( "Unknown error occured: ~p", [ Any ] ) } ),
+			Reply = encode_message( { error, io_lib:format( 
+				"Unknown error occured: ~p", [ Any ] 
+			) } ),
 			{ reply, Reply, Req, State, hibernate }
 	end;
 % Catch all websocket messages
