@@ -261,7 +261,7 @@ $( document ).ready( function()
 		event.preventDefault();
 		client.connect( function()
 		{
-			client.join( 'default_room' );
+			client.join( window.location.pathname );
 		} );
 	} );
 	
@@ -271,7 +271,7 @@ $( document ).ready( function()
 	$( 'form.disconnect' ).submit( function( event )
 	{
 		event.preventDefault();
-		client.part( 'default_room' );
+		client.part( window.location.pathname );
 		client.disconnect();
 	} );
 
@@ -282,7 +282,7 @@ $( document ).ready( function()
 	{
 		event.preventDefault();
 		var elem = $( 'form.message #text-input' );
-		client.say( 'default_room', elem.val() );
+		client.say( window.location.pathname, elem.val() );
 		elem.val( '' );
 	} );
 } );

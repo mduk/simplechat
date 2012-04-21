@@ -49,15 +49,18 @@ handle_call( nick, _From, State ) ->
 	{ reply, State#state.nick, State };
 % Join Room
 handle_call( { join, Room }, _From, State ) ->
-	Result = simplechat_room:join( binary_to_atom( Room, utf8 ) ),
+	{ ok, RoomPid } = simplechat_room_sup:room( Room ),
+	Result = simplechat_room:join( RoomPid ),
 	{ reply, Result, State };
 % Part Room
 handle_call( { part, Room }, _From, State ) ->
-	Result = simplechat_room:part( binary_to_atom( Room, utf8 ) ),
+	{ ok, RoomPid } = simplechat_room_sup:room( Room ),
+	Result = simplechat_room:part( RoomPid ),
 	{ reply, Result, State };
 % Say something in a room
 handle_call( { say, Room, Message }, _From, State ) ->
-	Result = simplechat_room:say( binary_to_atom( Room, utf8 ), State#state.nick, Message ),
+	{ ok, RoomPid } = simplechat_room_sup:room( Room ),
+	Result = simplechat_room:say( RoomPid, State#state.nick, Message ),
 	{ reply, Result, State };
 % Catch-all
 handle_call( _Msg, _From, State ) ->
