@@ -6,7 +6,7 @@
 start( _StartType, _StartArgs ) ->
 	start_http(),
 	{ ok, Sup } = simplechat_sup:start_link(),
-	{ ok, RoomPid } = simplechat_room_sup:start_room( default ),
+	{ ok, RoomPid } = simplechat_room_sup:start_room( <<"default_room">> ),
 	register( default_room, RoomPid ),
 	{ ok, Sup }.
 
