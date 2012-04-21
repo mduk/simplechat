@@ -140,10 +140,6 @@ var Client = function( wsUrl )
 			
 			$( '#chatbox .toolbar form' ).toggle();
 	
-			$( '#chatbox .timeline' ).append(
-				'<li class="event">Connected as ' + authorName + '</li>'
-			);
-	
 			cmd( {
 				type: "ident",
 				name: authorName
@@ -204,10 +200,6 @@ var Client = function( wsUrl )
 		{
 			console.log( event );
 			$( '#chatbox .toolbar form' ).toggle();
-	
-			$( '#chatbox .timeline' ).append(
-				'<li class="event">Disconnected</li>'
-			);
 		};
 	};
 
