@@ -18,16 +18,29 @@ init( { _Any, http }, Req, [] ) ->
         end.
 
 handle( Req, S ) ->
-	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
-	io:format( "Serving client HTML to ~p~n", [ PeerIp ] ),
-	
-	{ ok, Html } = file:read_file( "./client.html" ),
+	Body = case cowboy_http_req:path( Req ) of
+		{ [], _ } ->
+			Rooms = simplechat_room_sup:rooms(),
+			RoomsHtml = case Rooms of
+				[] ->
+					<<"<p>No active rooms</p>">>;
+				_ ->
+					ListItems = list_to_binary( lists:map( fun( { Name, _Pid } ) ->
+						<<"<li><a href=\"", Name/binary, "\">", Name/binary, "</a></li>">>
+					end, Rooms ) ),
+					<<"<ul>", ListItems/binary, "</ul>">>
+			end,
+			<<"<html><head><title>Simplechat</title></head><body>", RoomsHtml/binary, "</body></html>">>;
+		_ ->
+			{ ok, ClientHtml } = file:read_file( "./client.html" ),
+			ClientHtml
+	end,
 	
 	Headers = [
 		{ <<"Content-Type">>, <<"text/html">> }
 	],
 	
-	{ ok, Req2 } = cowboy_http_req:reply( 200, Headers, Html, Req ),
+	{ ok, Req2 } = cowboy_http_req:reply( 200, Headers, Body, Req ),
 	{ ok, Req2, S }.
 
 terminate( _, _ ) ->
