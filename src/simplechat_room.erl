@@ -11,11 +11,9 @@ start_link() ->
 	gen_server:start_link( ?MODULE, [], [] ).
 
 join( Room ) ->
-	io:format( "~p is joining ~p~n", [ self(), Room ] ),
 	gen_server:call( Room, { join, self() } ).
 
 part( Room ) ->
-	io:format( "~p is parting ~p~n", [ self(), Room ] ),
 	gen_server:call( Room, { part, self() } ).
 
 say( Room, Author, Message ) ->
@@ -45,7 +43,6 @@ handle_call( _Msg, _From, State ) ->
 	{ reply, unknown_call, State }.
 
 handle_cast( Msg = { message, _, _ }, State ) ->
-	io:format( "Room notifying ~p~n", [ Msg ] ),
 	gen_event:notify( State#state.event, Msg ),
 	{ noreply, State };
 handle_cast( _Msg, State ) ->

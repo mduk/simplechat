@@ -7,10 +7,6 @@ init( ClientPid ) ->
     { ok, ClientPid }.
 
 handle_event( Message, ClientPid ) ->
-	io:format( 
-		"~p Relaying ~p to client ~p.~n", 
-		[ self(), Message, ClientPid ] 
-	),
 	gen_server:cast( ClientPid, Message ),
 	{ ok, ClientPid }.
 

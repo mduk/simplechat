@@ -30,7 +30,6 @@ init( ConnectionPid ) ->
 	{ ok, #state{ connection = ConnectionPid } }.
 
 handle_cast( quit, State ) ->
-	io:format( "Client ~p quitting", [ self() ] ),
 	{ stop, quit, State };
 handle_cast( { Action, User, Room }, State ) when Action =:= joined; Action =:= parted ->
 	State#state.connection ! { send, { Action, User, Room } },
@@ -66,8 +65,7 @@ handle_call( { say, Room, Message }, _From, State ) ->
 handle_call( _Msg, _From, State ) ->
 	{ reply, error, State }.
 
-handle_info( Msg, State ) ->
-	io:format( "Uncaught info: ~p~n", [ Msg ] ),
+handle_info( _Msg, State ) ->
 	{ noreply, State }.
 
 terminate( _Reason, _State ) ->

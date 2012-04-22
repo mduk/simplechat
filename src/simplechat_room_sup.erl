@@ -13,7 +13,6 @@ init( _ ) ->
 
 % Start a room with the given name
 start_room( Name ) ->
-	io:format( "Creating room: ~s~n", [ Name ] ),
 	Mfa = { simplechat_room, start_link, [] },
 	ChildSpec = { Name, Mfa, permanent, 5000, worker, [ simplechat_room ] },
 	supervisor:start_child( ?MODULE, ChildSpec ).
