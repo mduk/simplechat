@@ -31,13 +31,13 @@ handle_call( { join, ClientPid }, _, State ) ->
 	spawn( fun() -> 
 		gen_event:notify( State#state.event, { joined, simplechat_client:nick( ClientPid ), <<"default_room">> } ) 
 	end ),
-	{ reply, ok, State };
+	{ reply, ok, State#state{ users = [ ClientPid | State#state.users ] } };
 % Client parts room
 handle_call( { part, ClientPid }, _, State ) ->
-	gen_event:delete_handler( State#state.event, simplechat_room_handler, ClientPid ),
 	spawn( fun() -> 
 		gen_event:notify( State#state.event, { parted, simplechat_client:nick( ClientPid ), <<"default_room">> } ) 
 	end ),
+	gen_event:delete_handler( State#state.event, simplechat_room_handler, ClientPid ),
 	{ reply, ok, State };
 handle_call( _Msg, _From, State ) ->
 	{ reply, unknown_call, State }.
