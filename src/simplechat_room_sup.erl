@@ -13,7 +13,7 @@ init( _ ) ->
 
 % Start a room with the given name
 start_room( Name ) ->
-	Mfa = { simplechat_room, start_link, [] },
+	Mfa = { simplechat_room, start_link, [ Name ] },
 	ChildSpec = { Name, Mfa, permanent, 5000, worker, [ simplechat_room ] },
 	supervisor:start_child( ?MODULE, ChildSpec ).
 

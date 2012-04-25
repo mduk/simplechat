@@ -3,12 +3,12 @@
 -behaviour( gen_server ).
 -export( [ init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3 ] ).
 
--export( [ start_link/0, join/1, part/1, say/3 ] ).
+-export( [ start_link/1, join/1, part/1, say/3 ] ).
 
--record( state, { event, users } ).
+-record( state, { name, event, clients = [] } ).
 
-start_link() ->
-	gen_server:start_link( ?MODULE, [], [] ).
+start_link( Name ) when is_binary( Name ) ->
+	gen_server:start_link( ?MODULE, { Name }, [] ).
 
 join( Room ) ->
 	gen_server:call( Room, { join, self() } ).
@@ -21,24 +21,35 @@ say( Room, Author, Message ) ->
 
 % Behaviour: gen_server
 
-init( _ ) ->
+init( { Name } ) ->
 	{ ok, Pid } = gen_event:start_link(),
-	{ ok, #state{ event = Pid } }.
+	gen_event:add_handler( Pid, ehandler, [] ),
+	{ ok, #state{ 
+		name = Name,
+		event = Pid 
+	} }.
 
 % Client joins room
 handle_call( { join, ClientPid }, _, State ) ->
 	gen_event:add_handler( State#state.event, simplechat_room_handler, ClientPid ),
 	spawn( fun() -> 
-		gen_event:notify( State#state.event, { joined, simplechat_client:nick( ClientPid ), <<"default_room">> } ) 
+		gen_event:notify( State#state.event, { joined, State#state.name, simplechat_client:nick( ClientPid ) } ) 
 	end ),
-	{ reply, ok, State#state{ users = [ ClientPid | State#state.users ] } };
+	{ reply, ok, State#state{ clients = [ ClientPid | State#state.clients ] } };
 % Client parts room
 handle_call( { part, ClientPid }, _, State ) ->
 	spawn( fun() -> 
-		gen_event:notify( State#state.event, { parted, simplechat_client:nick( ClientPid ), <<"default_room">> } ) 
+		gen_event:notify( State#state.event, { parted, State#state.name, simplechat_client:nick( ClientPid ) } )
 	end ),
+	
 	gen_event:delete_handler( State#state.event, simplechat_room_handler, ClientPid ),
-	{ reply, ok, State };
+
+	case lists:delete( ClientPid, State#state.clients ) of
+		[] -> 
+			{ stop, room_empty, ok, State#state{ clients = [] } };
+		RemainingClients -> 
+			{ reply, ok, State#state{ clients = RemainingClients } }
+	end;
 handle_call( _Msg, _From, State ) ->
 	{ reply, unknown_call, State }.
 
@@ -51,9 +62,12 @@ handle_cast( _Msg, State ) ->
 handle_info( _Msg, State ) ->
 	{ noreply, State }.
 
+terminate( room_empty, State ) ->
+	spawn( fun() ->
+		gen_event:notify( State#state.event, { closed, room_empty } )
+	end );
 terminate( _Reason, _State ) ->
 	ok.
 
 code_change( _OldVsn, _State, _Extra ) ->
 	ok.
-

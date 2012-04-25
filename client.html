@@ -117,6 +117,8 @@ var Client = function( wsUrl )
 	{
 		connection.send( JSON.stringify( Data ) );
 	}
+	
+	this.cmd = cmd;
 
 	/**
 	 * Connect to the simplechat websocket handler
@@ -187,6 +189,10 @@ var Client = function( wsUrl )
 				case 'parted':
 					var message = $( '<li class="event">' + data.user + ' disconnected</li>' );
 					break;
+				
+				default:
+					console.log( data );
+					break;
 			}
 		
 			$( '#chatbox .timeline' ).append( message );
@@ -246,12 +252,14 @@ var Client = function( wsUrl )
 	};
 };
 
+var client;
+
 /**
  * Register form handlers
  */
 $( document ).ready( function()
 {
-	var client = new Client( 'ws://' + window.location.host + window.location.pathname );
+	client = new Client( 'ws://' + window.location.host + window.location.pathname );
 	
 	/**
 	 * Connect form handler

@@ -1,5 +1,9 @@
 -module( simplechat_wshandler ).
 
+% This module mediates between the Websocket connection
+% and the client processes. It handles translating the
+% Json messages into client calls and vice versa.
+
 -behaviour( cowboy_http_handler ).
 -export( [ init/3, handle/2, terminate/2 ] ).
 
@@ -66,14 +70,17 @@ websocket_handle( { text, Msg }, Req, State ) ->
 	case gen_server:call( State#state.client_pid, parse_message( Msg ) ) of
 		unknown_call ->
 			Reply = encode_message( { error, "Unknown client command" } ),
-			{ reply, Reply, Req, State, hibernate };
+			{ reply, { text, list_to_binary( Reply ) }, Req, State, hibernate };
 		ok ->
 			{ ok, Req, State, hibernate };
+		{ ok, Result } ->
+			Reply = encode_message( Result ),
+			{ reply, { text, list_to_binary( Reply ) }, Req, State, hibernate };
 		Any ->
 			Reply = encode_message( { error, io_lib:format( 
 				"Unknown error occured: ~p", [ Any ] 
 			) } ),
-			{ reply, Reply, Req, State, hibernate }
+			{ reply, { text, list_to_binary( Reply ) }, Req, State, hibernate }
 	end;
 % Catch all websocket messages
 websocket_handle( _, Req, S ) ->
@@ -108,6 +115,8 @@ parse_message( { struct, Props } ) ->
 parse_message( { ident, Props } ) ->
 	{ _, Name } = proplists:lookup( <<"name">>, Props ),
 	{ ident, Name };
+parse_message( { list, _ } ) ->
+	list;
 % Parse a 'join' message
 parse_message( { join, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
@@ -125,6 +134,11 @@ parse_message( { say, Props } ) ->
 parse_message( JsonBin ) ->
         parse_message( mochijson2:decode( JsonBin ) ).
 
+encode_message( { room_list, Rooms } ) ->
+	mochijson2:encode( { struct, [
+		{ <<"type">>, <<"room_list">> },
+		{ <<"rooms">>, Rooms }
+	] } );
 % Encode a 'joined' message
 encode_message( { joined, User, Room } ) ->
 	mochijson2:encode( { struct, [
