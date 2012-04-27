@@ -3,9 +3,9 @@
 -behaviour( gen_server ).
 -export( [ init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3 ] ).
 
--export( [ start_link/1, join/1, part/1, say/3 ] ).
+-export( [ start_link/1, info/1, join/1, part/1, say/3 ] ).
 
--record( state, { name, event, clients = [] } ).
+-record( state, { name, event, clients = [], topic } ).
 
 start_link( Name ) when is_binary( Name ) ->
 	gen_server:start_link( ?MODULE, { Name }, [] ).
@@ -19,6 +19,9 @@ part( Room ) ->
 say( Room, Author, Message ) ->
 	gen_server:cast( Room, { message, Author, Message } ).
 
+info( Room ) ->
+	gen_server:call( Room, info ).
+
 % Behaviour: gen_server
 
 init( { Name } ) ->
@@ -29,6 +32,13 @@ init( { Name } ) ->
 		event = Pid 
 	} }.
 
+% Get room info
+handle_call( info, _, State ) ->
+	{ reply, [
+		{ name, State#state.name },
+		{ members, lists:flatlength( State#state.clients ) },
+		{ topic, State#state.topic }
+	], State };
 % Client joins room
 handle_call( { join, ClientPid }, _, State ) ->
 	gen_event:add_handler( State#state.event, simplechat_room_handler, ClientPid ),
