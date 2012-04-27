@@ -104,19 +104,13 @@ websocket_terminate( _Reason, _Req, State ) ->
 
 % Private functions
 
-% Parse a message from it's decoded json representation
-parse_message( { struct, Props } ) ->
-	Type = case proplists:lookup( <<"type">>, Props ) of
-		none -> throw( json_lacks_type );
-		{ _, TypeBin } -> binary_to_atom( TypeBin, utf8 )
-	end,
-	parse_message( { Type, Props } );
 % Parse an 'ident' message
 parse_message( { ident, Props } ) ->
 	{ _, Name } = proplists:lookup( <<"name">>, Props ),
 	{ ident, Name };
-parse_message( { list, _ } ) ->
-	list;
+% Parse a 'active_rooms' message
+parse_message( { active_rooms, _ } ) ->
+	active_rooms;
 % Parse a 'join' message
 parse_message( { join, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
@@ -130,14 +124,25 @@ parse_message( { say, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
         { _, Body } = proplists:lookup( <<"body">>, Props ),
 	{ say, Room, Body };
+% Parse a message from it's decoded json representation
+parse_message( { struct, Props } ) ->
+	Type = case proplists:lookup( <<"type">>, Props ) of
+		none -> throw( json_lacks_type );
+		{ _, TypeBin } -> binary_to_atom( TypeBin, utf8 )
+	end,
+	parse_message( { Type, Props } );
 % Parse json payload
 parse_message( JsonBin ) ->
         parse_message( mochijson2:decode( JsonBin ) ).
 
-encode_message( { room_list, Rooms } ) ->
+% Encode an 'active_rooms' message
+encode_message( { active_rooms, Rooms } ) ->
+	RoomStructs = lists:map( fun( RoomProps ) ->
+		{ struct, RoomProps }
+	end, Rooms ),
 	mochijson2:encode( { struct, [
-		{ <<"type">>, <<"room_list">> },
-		{ <<"rooms">>, Rooms }
+		{ <<"type">>, <<"active_rooms">> },
+		{ <<"rooms">>, RoomStructs }
 	] } );
 % Encode a 'joined' message
 encode_message( { joined, User, Room } ) ->
