@@ -6,7 +6,7 @@
 -behaviour( gen_server ).
 -export( [ init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3 ] ).
 
--export( [ start_link/1, nick/1, nick/2, list/1, join/2, part/2, quit/1 ] ).
+-export( [ start_link/1, nick/1, nick/2, active_rooms/1, join/2, part/2, quit/1 ] ).
 
 -record( state, { connection, nick } ).
 
@@ -19,8 +19,8 @@ nick( Client ) ->
 nick( Client, Nick ) ->
 	gen_server:call( Client, { nick, Nick } ).
 	
-list( Client ) ->
-	gen_server:call( Client, list ).
+active_rooms( Client ) ->
+	gen_server:call( Client, active_rooms ).
 
 join( Client, Room ) ->
 	gen_server:call( Client, { join, Room } ).
@@ -53,12 +53,12 @@ handle_call( { nick, Nick }, _From, State ) ->
 % Get Nick 
 handle_call( nick, _From, State ) ->
 	{ reply, State#state.nick, State };
-% List rooms (equiv to irc /list, all server rooms)
-handle_call( list, _From, State ) ->
-	Rooms = lists:map( fun( { Name, _ } ) ->
-		Name
+% Active rooms (equiv to irc /list, all server rooms)
+handle_call( active_rooms, _From, State ) ->
+	Rooms = lists:map( fun( { Name, Pid } ) ->
+		simplechat_room:info( Pid )
 	end, simplechat_room_sup:rooms() ),
-	{ reply, { ok, { room_list, Rooms } }, State };
+	{ reply, { ok, { active_rooms, Rooms } }, State };
 % Join Room
 handle_call( { join, Room }, _From, State ) ->
 	{ ok, RoomPid } = simplechat_room_sup:room( Room ),
