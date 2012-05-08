@@ -63,8 +63,8 @@ handle_call( { part, ClientPid }, _, State ) ->
 handle_call( _Msg, _From, State ) ->
 	{ reply, unknown_call, State }.
 
-handle_cast( Msg = { message, _, _ }, State ) ->
-	gen_event:notify( State#state.event, Msg ),
+handle_cast( { message, Author, Body }, State ) ->
+	gen_event:notify( State#state.event, { message, State#state.name, Author, Body } ),
 	{ noreply, State };
 handle_cast( _Msg, State ) ->
 	{ noreply, State }.

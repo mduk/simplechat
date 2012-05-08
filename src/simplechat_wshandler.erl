@@ -97,9 +97,13 @@ websocket_info( _Msg, Req, State ) ->
 	{ ok, Req, State, hibernate }.
 
 % Connection closed
-websocket_terminate( _Reason, _Req, State ) ->
+websocket_terminate( _Reason, _Req, #state{ client_pid = ClientPid, client_id = ClientId } ) ->
+	
+	% Tell The client process to quit
+	simplechat_client:quit( ClientPid ),
+	
 	% Kill the client process
-	simplechat_client_sup:terminate_client( State#state.client_id ),
+	simplechat_client_sup:terminate_client( ClientId ),
 	ok.
 
 % Private functions
@@ -159,9 +163,10 @@ encode_message( { parted, User, Room } ) ->
 		{ <<"room">>, Room }
 	] } );
 % Encode a 'message' message
-encode_message( { message, Author, Body } ) ->
+encode_message( { message, Room, Author, Body } ) ->
 	mochijson2:encode( { struct, [
 		{ <<"type">>, <<"message">> },
+		{ <<"room">>, Room },
 		{ <<"author">>, Author },
 		{ <<"body">>, Body }
 	] } );

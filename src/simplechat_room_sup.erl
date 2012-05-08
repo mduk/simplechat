@@ -15,7 +15,9 @@ init( _ ) ->
 start_room( Name ) ->
 	Mfa = { simplechat_room, start_link, [ Name ] },
 	ChildSpec = { Name, Mfa, permanent, 5000, worker, [ simplechat_room ] },
-	supervisor:start_child( ?MODULE, ChildSpec ).
+	{ ok, Pid } = supervisor:start_child( ?MODULE, ChildSpec ),
+	gen_event:notify( simplechat_sup:event(), { room_opened, Name } ),
+	{ ok, Pid }.
 
 % Return a room pid by it's name, start the room if it isn't already
 room( Name ) ->

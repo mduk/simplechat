@@ -6,9 +6,9 @@
 -behaviour( gen_server ).
 -export( [ init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3 ] ).
 
--export( [ start_link/1, nick/1, nick/2, active_rooms/1, join/2, part/2, quit/1 ] ).
+-export( [ start_link/1, nick/1, nick/2, active_rooms/1, joined_rooms/1, join/2, part/2, quit/1 ] ).
 
--record( state, { connection, nick } ).
+-record( state, { connection, nick, rooms = [] } ).
 
 start_link( ConnectionPid ) ->
 	gen_server:start_link( ?MODULE, ConnectionPid, [] ).
@@ -21,6 +21,9 @@ nick( Client, Nick ) ->
 	
 active_rooms( Client ) ->
 	gen_server:call( Client, active_rooms ).
+
+joined_rooms( Client ) ->
+	gen_server:call( Client, joined_rooms ).
 
 join( Client, Room ) ->
 	gen_server:call( Client, { join, Room } ).
@@ -35,12 +38,15 @@ quit( Client ) ->
 init( ConnectionPid ) ->
 	{ ok, #state{ connection = ConnectionPid } }.
 
-handle_cast( quit, State ) ->
+handle_cast( quit, State = #state{ rooms = Rooms } ) ->
+	lists:map( fun( Room ) ->
+		simplechat_room:part( Room )
+	end, Rooms ),
 	{ stop, quit, State };
 handle_cast( { Action, Room, User }, State ) when Action =:= joined; Action =:= parted ->
 	State#state.connection ! { send, { Action, User, Room } },
 	{ noreply, State };
-handle_cast( Msg = { message, _, _ }, State ) ->
+handle_cast( Msg = { message, _, _, _ }, State ) ->
 	State#state.connection ! { send, Msg },
 	{ noreply, State }.
 
@@ -55,20 +61,23 @@ handle_call( nick, _From, State ) ->
 	{ reply, State#state.nick, State };
 % Active rooms (equiv to irc /list, all server rooms)
 handle_call( active_rooms, _From, State ) ->
-	Rooms = lists:map( fun( { Name, Pid } ) ->
+	Rooms = lists:map( fun( { _Name, Pid } ) ->
 		simplechat_room:info( Pid )
 	end, simplechat_room_sup:rooms() ),
 	{ reply, { ok, { active_rooms, Rooms } }, State };
+% List of rooms the client has joined
+handle_call( joined_rooms, _From, State = #state{ rooms = Rooms } ) ->
+	{ reply, { ok, { joined_rooms, Rooms } }, State };
 % Join Room
 handle_call( { join, Room }, _From, State ) ->
 	{ ok, RoomPid } = simplechat_room_sup:room( Room ),
 	Result = simplechat_room:join( RoomPid ),
-	{ reply, Result, State };
+	{ reply, Result, State#state{ rooms = [ RoomPid | State#state.rooms ] } };
 % Part Room
 handle_call( { part, Room }, _From, State ) ->
 	{ ok, RoomPid } = simplechat_room_sup:room( Room ),
 	Result = simplechat_room:part( RoomPid ),
-	{ reply, Result, State };
+	{ reply, Result, State#state{ rooms = lists:delete( RoomPid, State#state.rooms ) } };
 % Say something in a room
 handle_call( { say, Room, Message }, _From, State ) ->
 	{ ok, RoomPid } = simplechat_room_sup:room( Room ),
