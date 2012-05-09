@@ -54,10 +54,16 @@ terminate( _, _ ) ->
 
 % Initialise websocket handler
 websocket_init( _, Req, [] ) ->
+	
+	% Make up a ClientId
 	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
 	ClientId = { PeerIp, calendar:local_time() },
 	
+	% Start the client
 	{ ok, ClientPid } = simplechat_client_sup:start_client( ClientId ),
+	
+	% Register the client event handler
+	simplechat_client:add_handler( ClientPid, simplechat_websocket_client_handler, self() ),
 	
 	{ ok, cowboy_http_req:compact( Req ), #state{ 
 		client_id = ClientId,
@@ -86,6 +92,12 @@ websocket_handle( { text, Msg }, Req, State ) ->
 websocket_handle( _, Req, S ) ->
 	{ ok, Req, S }.
 
+% Client Events
+websocket_info( Msg = { client_event, _ }, Req, State ) ->
+	{ reply, { text, encode_message( Msg ) }, Req, State, hibernate };
+% Room Events
+websocket_info( Msg = { room_event, _ }, Req, State ) ->
+	{ reply, { text, encode_message( Msg ) }, Req, State, hibernate };
 % Send raw data down the websocket
 websocket_info( { send, Data }, Req, State ) when is_binary( Data ) ->
 	{ reply, { text, Data }, Req, State, hibernate };
@@ -93,7 +105,8 @@ websocket_info( { send, Data }, Req, State ) when is_binary( Data ) ->
 websocket_info( { send, Message }, Req, State ) ->
 	{ reply, { text, encode_message( Message ) }, Req, State, hibernate };
 % Catch all messages
-websocket_info( _Msg, Req, State ) ->
+websocket_info( Msg, Req, State ) ->
+	io:format( "Wshandler Unknown info: ~p~n", [ Msg ] ),
 	{ ok, Req, State, hibernate }.
 
 % Connection closed
@@ -106,7 +119,9 @@ websocket_terminate( _Reason, _Req, #state{ client_pid = ClientPid, client_id = 
 	simplechat_client_sup:terminate_client( ClientId ),
 	ok.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Private functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Parse an 'ident' message
 parse_message( { ident, Props } ) ->
@@ -139,6 +154,38 @@ parse_message( { struct, Props } ) ->
 parse_message( JsonBin ) ->
         parse_message( mochijson2:decode( JsonBin ) ).
 
+% ==============================================================================
+% encode_message/1
+% ==============================================================================
+% Room Events
+% ------------------------------------------------------------------------------
+encode_message( { room_event, { message, Room, Client, Message } } ) ->
+	mochijson2:encode( { struct, [
+		{ <<"source">>, <<"room">> },
+		{ <<"type">>, <<"message">> },
+		{ <<"room">>, Room },
+		{ <<"client">>, Client },
+		{ <<"body">>, Message }
+	] } );
+encode_message( { room_event, { Motion, Room, Client } } ) when Motion =:= joined; Motion =:= parted ->
+	mochijson2:encode( { struct, [
+		{ <<"source">>, <<"room">> },
+		{ <<"type">>, atom_to_binary( Motion, utf8 ) },
+		{ <<"room">>, Room },
+		{ <<"client">>, Client }
+	] } );
+% ------------------------------------------------------------------------------
+% Client Events
+% ------------------------------------------------------------------------------
+encode_message( { client_event, { Motion, { RoomName, _ } } } ) when Motion =:= joined; Motion =:= parted ->
+	mochijson2:encode( { struct, [
+		{ <<"source">>, <<"client">> },
+		{ <<"type">>, atom_to_binary( Type, utf8 ) },
+		{ <<"room">>, RoomName }
+	] } );
+% ------------------------------------------------------------------------------
+% Misc
+% ------------------------------------------------------------------------------
 % Encode an 'active_rooms' message
 encode_message( { active_rooms, Rooms } ) ->
 	RoomStructs = lists:map( fun( RoomProps ) ->
@@ -147,28 +194,6 @@ encode_message( { active_rooms, Rooms } ) ->
 	mochijson2:encode( { struct, [
 		{ <<"type">>, <<"active_rooms">> },
 		{ <<"rooms">>, RoomStructs }
-	] } );
-% Encode a 'joined' message
-encode_message( { joined, User, Room } ) ->
-	mochijson2:encode( { struct, [
-		{ <<"type">>, <<"joined">> },
-		{ <<"user">>, User },
-		{ <<"room">>, Room }
-	] } );
-% Encode a 'parted' message
-encode_message( { parted, User, Room } ) ->
-	mochijson2:encode( { struct, [
-		{ <<"type">>, <<"parted">> },
-		{ <<"user">>, User },
-		{ <<"room">>, Room }
-	] } );
-% Encode a 'message' message
-encode_message( { message, Room, Author, Body } ) ->
-	mochijson2:encode( { struct, [
-		{ <<"type">>, <<"message">> },
-		{ <<"room">>, Room },
-		{ <<"author">>, Author },
-		{ <<"body">>, Body }
 	] } );
 % Encode an 'error' message
 encode_message( { error, Message } ) ->
