@@ -126,7 +126,7 @@ parse_message( { part, Props } ) ->
 % Parse a 'say' message
 parse_message( { say, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
-        { _, Body } = proplists:lookup( <<"body">>, Props ),
+    { _, Body } = proplists:lookup( <<"body">>, Props ),
 	{ say, Room, Body };
 % Parse a message from it's decoded json representation
 parse_message( { struct, Props } ) ->
