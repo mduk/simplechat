@@ -111,12 +111,8 @@ websocket_info( Msg, Req, State ) ->
 
 % Connection closed
 websocket_terminate( _Reason, _Req, #state{ client_pid = ClientPid, client_id = ClientId } ) ->
-	
 	% Tell The client process to quit
 	simplechat_client:quit( ClientPid ),
-	
-	% Kill the client process
-	simplechat_client_sup:terminate_client( ClientId ),
 	ok.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -130,6 +126,9 @@ parse_message( { ident, Props } ) ->
 % Parse a 'active_rooms' message
 parse_message( { active_rooms, _ } ) ->
 	active_rooms;
+% Parse a 'quit' message
+parse_message( { quit, _ } ) ->
+	quit;
 % Parse a 'join' message
 parse_message( { join, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
@@ -180,7 +179,7 @@ encode_message( { room_event, { Motion, Room, Client } } ) when Motion =:= joine
 encode_message( { client_event, { Motion, { RoomName, _ } } } ) when Motion =:= joined; Motion =:= parted ->
 	mochijson2:encode( { struct, [
 		{ <<"source">>, <<"client">> },
-		{ <<"type">>, atom_to_binary( Type, utf8 ) },
+		{ <<"type">>, atom_to_binary( Motion, utf8 ) },
 		{ <<"room">>, RoomName }
 	] } );
 % ------------------------------------------------------------------------------
