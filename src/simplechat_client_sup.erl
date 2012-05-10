@@ -12,8 +12,8 @@ init( _ ) ->
 	{ ok, { { one_for_one, 5, 10 }, [] } }.
 
 start_client( Id ) ->
-	Mfa = { simplechat_client, start_link, [ self() ] },
-	ChildSpec = { Id, Mfa, permanent, 5000, worker, [ simplechat_client ] },
+	Mfa = { simplechat_client, start_link, [] },
+	ChildSpec = { Id, Mfa, temporary, 5000, worker, [ simplechat_client ] },
 	supervisor:start_child( ?MODULE, ChildSpec ).
 
 terminate_client( Id ) ->

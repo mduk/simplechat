@@ -6,21 +6,18 @@
 -behaviour( gen_server ).
 -export( [ init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3 ] ).
 
--export( [ start_link/1, add_handler/3, nick/1, nick/2, active_rooms/1, joined_rooms/1, join/2, part/2, quit/1 ] ).
+-export( [ start_link/0, add_handler/3, nick/1, nick/2, active_rooms/1, joined_rooms/1, join/2, part/2, quit/1 ] ).
 
 -record( state, { 
-	connection,	% deprecated
-
-	event,		% Instead of passing a "connection" pid, just fire events. 
-				% The connection can handle it's end on it's own.
+	event,		% Client event handler
 	
 	nick,		% The nickname of the user
 	
 	rooms = []	% Propertylist of rooms the client has joined
 } ).
 
-start_link( ConnectionPid ) ->
-	gen_server:start_link( ?MODULE, ConnectionPid, [] ).
+start_link() ->
+	gen_server:start_link( ?MODULE, [], [] ).
 	
 add_handler( Client, Module, Args ) ->
 	gen_server:call( Client, { add_handler, Module, Args } ).
@@ -44,32 +41,22 @@ part( Client, Room ) ->
 	gen_server:call( Client, { part, Room } ).
 
 quit( Client ) ->
-	gen_server:cast( Client, quit ). 
+	gen_server:call( Client, quit ). 
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Behaviour: gen_server
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-init( ConnectionPid ) ->
+init( _ ) ->
 	{ ok, EventPid } = gen_event:start_link(),
-	gen_event:add_handler( EventPid, ehandler, "Client Event" ),
+	gen_event:add_handler( EventPid, simplechat_echohandler, "Client Event" ),
 	{ ok, #state{
-		connection = ConnectionPid,
 		event = EventPid
 	} }.
 
-% Quit command
-handle_cast( quit, State = #state{ rooms = Rooms } ) ->
-	lists:map( fun( Room ) ->
-		simplechat_room:part( Room )
-	end, Rooms ),
-	{ stop, quit, State };
 % A room event, pass it straight on to the client event manager
 handle_cast( Event = { room_event, _ }, State ) ->
 	gen_event:notify( State#state.event, Event ),
-	{ noreply, State };
-handle_cast( { room_event, Msg = { message, _RoomName, _ClientName, _Message } }, State ) ->
-	State#state.connection ! { send, Msg },
 	{ noreply, State }.
 
 % Add Handler
@@ -141,6 +128,14 @@ handle_call( { say, Room, Message }, _From, State ) ->
 	{ ok, RoomPid } = simplechat_room_sup:room( Room ),
 	Result = simplechat_room:say( RoomPid, State#state.nick, Message ),
 	{ reply, Result, State };
+% Quit command
+handle_call( quit, _From, State = #state{ rooms = Rooms } ) ->
+	
+	part_all( Rooms ),
+	gen_event:sync_notify( State#state.event, quit ),
+	
+	io:format( "Client stopping~n" ),
+	{ stop, shutdown, ok, State#state{ rooms = [] } };
 % Catch-all
 handle_call( _Msg, _From, State ) ->
 	{ reply, error, State }.
@@ -153,3 +148,9 @@ terminate( _Reason, _State ) ->
 
 code_change( _Vsn, State, _Opts ) ->
 	{ ok, State }.
+	
+part_all( [] ) -> ok;
+part_all( [ { Name, Pid } | T ] ) ->
+	io:format( "Parting ~s ~p~n", [ Name, Pid ] ),
+	simplechat_room:part( Pid ),
+	part_all( T ).
