@@ -26,7 +26,7 @@ info( Room ) ->
 
 init( { Name } ) ->
 	{ ok, Pid } = gen_event:start_link(),
-	gen_event:add_handler( Pid, ehandler, "Room Event" ),
+	gen_event:add_handler( Pid, simplechat_echohandler, io_lib:format( "Room (~s) Event", [ Name ] ) ),
 	{ ok, #state{ 
 		name = Name,
 		event = Pid 
