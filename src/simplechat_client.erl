@@ -125,9 +125,16 @@ handle_call( { part, Room }, _From, State ) ->
 	end;
 % Say something in a room
 handle_call( { say, Room, Message }, _From, State ) ->
-	{ ok, RoomPid } = simplechat_room_sup:room( Room ),
-	Result = simplechat_room:say( RoomPid, State#state.nick, Message ),
-	{ reply, Result, State };
+	case proplists:lookup( Room, State#state.rooms ) of
+		
+		{ Room, RoomPid } ->
+			Result = simplechat_room:say( RoomPid, State#state.nick, Message ),
+			{ reply, Result, State };
+			
+		none ->
+			{ reply, { error, not_present_in_room }, State }
+			
+	end;
 % Quit command
 handle_call( quit, _From, State = #state{ rooms = Rooms } ) ->
 	
