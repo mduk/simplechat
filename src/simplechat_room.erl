@@ -42,15 +42,13 @@ handle_call( info, _, State ) ->
 % Client joins room
 handle_call( { join, ClientPid }, _, State ) ->
 	gen_event:add_handler( State#state.event, simplechat_client_room_handler, ClientPid ),
-	spawn( fun() -> 
-		gen_event:notify( State#state.event, { joined, State#state.name, simplechat_client:nick( ClientPid ) } ) 
-	end ),
+		gen_event:notify( State#state.event, { joined, State#state.name, 
+			list_to_binary( io_lib:format( "~p", [ ClientPid ] ) ) } ),
 	{ reply, ok, State#state{ clients = [ ClientPid | State#state.clients ] } };
 % Client parts room
 handle_call( { part, ClientPid }, _, State ) ->
-	spawn( fun() -> 
-		gen_event:notify( State#state.event, { parted, State#state.name, simplechat_client:nick( ClientPid ) } )
-	end ),
+		gen_event:notify( State#state.event, { parted, State#state.name, 
+			list_to_binary( io_lib:format( "~p", [ ClientPid ] ) ) } ),
 	gen_event:delete_handler( State#state.event, simplechat_client_room_handler, ClientPid ),
 	{ reply, ok, State#state{ clients = lists:delete( ClientPid, State#state.clients ) } };
 handle_call( _Msg, _From, State ) ->
