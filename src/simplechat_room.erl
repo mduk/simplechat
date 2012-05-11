@@ -72,7 +72,8 @@ handle_cast( { join, ClientPid, Nick }, State ) ->
 		
 		denied ->
 			% Notify the client that it was denied access to the room
-			ClientPid ! { room, { State#state.name, self() }, denied }
+			ClientPid ! { room, { State#state.name, self() }, denied },
+			State
 	end,
 	
 	{ noreply, NewState };
