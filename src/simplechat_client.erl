@@ -165,7 +165,10 @@ handle_info( { room, { RoomName, RoomPid }, joined }, State ) ->
 	{ noreply, State#state{ rooms = [ { RoomName, RoomPid } | State#state.rooms ] } };
 
 % A room has denied the client's join request
-handle_info( { room, { _RoomName, _RoomPid }, denied }, State ) ->
+handle_info( { room, { RoomName, RoomPid }, denied }, State ) ->
+
+	gen_event:notify( State#state.event, { denied, { RoomName, RoomPid } } ),
+	
 	{ noreply, State };
 
 % A room has been parted

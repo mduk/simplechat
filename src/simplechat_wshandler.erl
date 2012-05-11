@@ -182,6 +182,8 @@ encode_message( { client_event, { Motion, { RoomName, _ } } } ) when Motion =:= 
 		{ <<"type">>, atom_to_binary( Motion, utf8 ) },
 		{ <<"room">>, RoomName }
 	] } );
+encode_message( { client_event, { denied, { RoomName, _ } } } ) ->
+	encode_message( { error, <<"Access to room \"", RoomName/binary, "\" denied.">> } );
 % ------------------------------------------------------------------------------
 % Misc
 % ------------------------------------------------------------------------------
