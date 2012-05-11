@@ -110,7 +110,7 @@ websocket_info( Msg, Req, State ) ->
 	{ ok, Req, State, hibernate }.
 
 % Connection closed
-websocket_terminate( _Reason, _Req, #state{ client_pid = ClientPid, client_id = ClientId } ) ->
+websocket_terminate( _Reason, _Req, #state{ client_pid = ClientPid } ) ->
 	% Tell The client process to quit
 	simplechat_client:quit( ClientPid ),
 	ok.
