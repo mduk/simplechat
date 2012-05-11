@@ -197,8 +197,8 @@ encode_message( { active_rooms, Rooms } ) ->
 % Encode an 'error' message
 encode_message( { error, Message } ) ->
 	mochijson2:encode( { struct, [
-		{ <<"type">>, <<"message">> },
-		{ <<"author">>, <<"Server Error">> },
-		{ <<"body">>, Message }
+		{ <<"type">>, <<"error">> },
+		{ <<"title">>, <<"Server Error">> },
+		{ <<"message">>, Message }
 	] } ). 
 
