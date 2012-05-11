@@ -57,10 +57,18 @@ init( _ ) ->
 		event = EventPid
 	} }.
 
+%===============================================================================
+% handle_cast/2
+%===============================================================================
+
 % A room event, pass it straight on to the client event manager
 handle_cast( Event = { room_event, _ }, State ) ->
 	gen_event:notify( State#state.event, Event ),
 	{ noreply, State }.
+
+%===============================================================================
+% handle_call/3
+%===============================================================================
 
 % Add Handler
 handle_call( { add_handler, Module, Args }, _From, State ) ->
@@ -142,6 +150,10 @@ handle_call( quit, _From, State = #state{ rooms = Rooms } ) ->
 % Catch-all
 handle_call( _Msg, _From, State ) ->
 	{ reply, error, State }.
+
+%===============================================================================
+% handle_info/2
+%===============================================================================
 
 % A room has accepted the client's join request
 handle_info( { room, { RoomName, RoomPid }, joined }, State ) ->
