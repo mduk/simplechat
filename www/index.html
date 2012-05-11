@@ -1,0 +1,509 @@
+<html>
+
+	<head>
+		<link rel="stylesheet" type="text/css" href="extjs/resources/css/ext-all.css">
+		<script type="text/javascript" src="extjs/ext-all-debug.js"></script>
+	</head>
+	
+	<body>
+		<style type="text/css">
+.room-event {
+	padding: 0.5em;
+	border: 0;
+	border-bottom: 1px grey dotted;
+}
+
+.room-event .client {
+	font-weight: bold;
+}
+
+.room-event.joined {
+	text-align: center;
+}
+
+.room-event.parted {
+	text-align: center;
+}
+
+.room-event.message .body {
+	padding-left: 1em;
+}
+
+.room-event.message .client:after {
+	content: ": ";
+}
+		</style>
+		<script type="text/javascript">
+
+Ext.define( 'SimpleChat.view.room.Chat', {
+	extend: 'Ext.window.Window',
+	
+	width: 400,
+	height: 600,
+	
+	listeners: {
+		beforeclose: function( panel, opts )
+		{
+			client.part( this.room );
+		}
+	},
+	
+	initComponent: function()
+	{
+		this.title = "Room: " + this.room;
+		this.callParent();
+	},
+	
+	layout: 'border',
+	items: [
+		{ 
+			autoScroll: true,
+			region: 'center', 
+		},
+		{ 
+			region: 'south',
+			
+			xtype: 'form',
+			
+			url: '/',
+			layout: 'anchor',
+			defaults: {
+				anchor: '100%'
+			},
+			
+			defaultType: 'textfield',
+			items: [
+				{
+					name: 'msg',
+					enableKeyEvents: true,
+					listeners: {
+						specialkey: function( textfield, event )
+						{
+							if ( event.getKey() == event.ENTER )
+							{
+								var text = textfield.getValue();
+								
+								if ( text != "" )
+								{
+									textfield.up( 'window' ).say( text )
+									textfield.setValue( "" );
+								}
+							}
+						}
+					}
+				}
+			]
+		}
+	],
+	
+	say: function( Message )
+	{
+		client.say( this.room, Message );
+	},
+	
+	appendRoomEvent: function( data )
+	{
+		var timeline = this.getComponent( 0 );
+		
+		switch ( data.type )
+		{
+			case 'joined':
+				timeline.add( {
+					border: false,
+					cls: 'room-event joined',
+					html: new Ext.XTemplate( 
+						'<span class="client">{client}</span> has joined the room.'
+					).apply( data )
+				} );
+				break;
+			
+			case 'parted':
+				timeline.add( {
+					border: false,
+					cls: 'room-event parted',
+					html: new Ext.XTemplate(
+						'<span class="client">{client}</span> has left the room.'
+					).apply( data )
+				} );
+				break;
+				
+			case 'message':
+				timeline.add( { 
+					border: false,
+					cls: 'room-event message',
+					html: new Ext.XTemplate(
+						'<span class="client">{client}</span><span class="body">{body}</span>'
+					).apply( data ) 
+				} );
+				break;
+			
+			default:
+				console.log( "Room Event not recognised:" );
+				console.log( data );
+				break;
+		}
+		
+		// Scroll the panel down
+		var d = timeline.body.dom;
+		d.scrollTop = d.scrollHeight - d.offsetHeight;
+	}
+} );
+
+Ext.define( 'SimpleChat.view.room.ListWindow', {
+	extend: 'Ext.window.Window',
+	title: 'Chat Rooms',
+	width: 600,
+	height: 600,
+	scrollable: true,
+	closable: false,
+	
+	tbar: [
+		{
+			text: "Connect",
+			handler: function( btn, e )
+			{
+				if ( btn.getText() == "Connect" )
+				{
+					Ext.Msg.prompt( "Nickname", "Please specify a nickname:", function( clicked, name )
+					{
+						client.connect( name, function()
+						{
+							btn.setText( "Disconnect" );
+							client.activeRooms();
+						} );
+					} );
+				}
+				else
+				{
+					client.disconnect();
+					btn.setText( "Connect" );
+				}
+			}	
+		},
+		{ 
+			text: "Create Room",
+			handler: function( btn, e )
+			{
+				Ext.Msg.prompt( 'Room Name', 'Specify room name:', function( clicked, name )
+				{
+					if ( clicked != 'ok' )
+					{
+						return;
+					}
+					
+					client.join( name );
+					client.activeRooms();
+				} );
+			}
+		},
+		{
+			text: "Refresh List",
+			handler: function( btn, e )
+			{
+				client.activeRooms();
+			}
+		}
+	],
+	
+	initComponent: function()
+	{
+		this.on( 'beforeclose', function()
+		{
+			return client.disconnect();
+		} );
+		
+		this.callParent();
+	},
+	
+	items: {
+		client: client,
+		id: 'room-list',
+		xtype: 'roomList'
+	}
+} );
+
+Ext.define( 'SimpleChat.view.room.List', {
+	extend: 'Ext.grid.Panel',
+	alias: 'widget.roomList',
+	
+	initComponent: function()
+	{
+		this.store = {
+			fields: [ 'name', 'members' ],
+			data: []
+		};
+		
+		this.columns = [
+			{ header: 'Room Name', dataIndex: 'name', flex: 1 },
+			{ header: 'Members', dataIndex: 'members' }
+		];
+		
+		/**
+		 * When a user double clicks on a room, send the join command.
+		 */
+		this.on( 'itemdblclick', function( uhihoh, record, item, index, e, eOpts )
+		{
+			client.join( record.data.name );
+		} );
+		
+		this.callParent();
+	},
+	
+	/**
+	 * Given a room object, update that room in the list
+	 */
+	updateRoom: function( room )
+	{
+		var store = this.getStore();
+		var pos = store.findExact( 'name', room.name );
+		
+		if ( pos == -1 )
+		{
+			store.add( room );
+		}
+		else
+		{
+			store.removeAt( pos );
+			store.insert( pos, room );
+		}
+	},
+	
+	/**
+	 * Update all rooms in the list
+	 */
+	updateList: function( list )
+	{
+		for ( var i = 0; i < list.length; i++ )
+		{
+			this.updateRoom( list[ i ] );
+		}
+	}
+} );
+
+/**
+ * Chat client class
+ */
+var Client = function( wsUrl, messageCallback )
+{
+	/**
+	 * The Websocket handle
+	 */
+	var connection;
+	
+	/**
+	 * Send a command (object with type property) down the connection
+	 */
+	function cmd( Data )
+	{
+		var json = JSON.stringify( Data );
+		console.log( "Sending packet: " + json );
+		connection.send( json );
+	}
+	
+	this.cmd = cmd;
+
+	/**
+	 * Connect to the simplechat websocket handler
+	 */
+	this.connect = function( nick, callback )
+	{
+		console.log( "Connecting... " );
+	
+		connection = new WebSocket( wsUrl );
+		
+		connection.onopen = function()
+		{
+			console.log( "Connected." );
+			
+			cmd( {
+				type: "ident",
+				name: nick
+			} );
+	
+			callback();
+		};
+		
+		connection.onerror = function( error )
+		{
+			console.log( 'WebSocket Error!' );
+			console.log( error );
+		};
+		
+		connection.onmessage = messageCallback;
+		
+		connection.onclose = function( event )
+		{
+			console.log( event );
+		};
+	};
+
+	/**
+	 * Disconnect from server
+	 */
+	this.disconnect = function()
+	{
+		cmd( {
+			type: 'quit'
+		} );
+		connection.close();
+	};
+	
+	/**
+	 * Join a chat room.
+	 */
+	this.join = function( Room )
+	{
+		cmd( {
+			type: 'join',
+			room: Room
+		} );
+	};
+	
+	/**
+	 * Part a chat room.
+	 */
+	this.part = function( Room )
+	{
+		cmd( {
+			type: 'part',
+			room: Room
+		} );
+	};
+	
+	/**
+	 * Say something to a chat room
+	 */
+	this.say = function( Room, Message )
+	{
+		cmd( {
+			type: 'say',
+			room: Room,
+			body: Message
+		} );
+	};
+	
+	/**
+	 * Request a list of active rooms
+	 */
+	this.activeRooms = function()
+	{
+		cmd( {
+			type: 'active_rooms'
+		} );
+	};
+	
+	/**
+	 * Disconnect
+	 */
+	this.disconnect = function()
+	{
+		connection.close();
+	};
+};
+
+var client;
+
+Ext.application( {
+	name: 'SimpleChat',
+	controllers: [],
+	launch: function() 
+	{
+		var roomList = Ext.create( 'SimpleChat.view.room.ListWindow', {
+			id: 'room-list-win'
+		} );
+		
+		Ext.WindowManager.register( roomList );
+		
+		client = new Client( 'ws://localhost:8080/', function( wsMsg )
+		{
+			console.log( "Received Packet: " + wsMsg.data );
+			
+			var data = JSON.parse( wsMsg.data );
+			
+			if ( "source" in data )
+			{
+				/**
+				 * Room events
+				 */
+				 if ( data.source == 'room' )
+				 {
+				 	var roomWinId = 'room-' + data.room + '-win';
+				 	
+				 	// Should this passively instantiate the room window?
+				 	
+				 	Ext.WindowManager.get( roomWinId )
+				 		.appendRoomEvent( data );
+				 	
+				 	return;
+				 }
+				
+				/**
+				 * The client joined a room
+				 */
+				if ( data.source == 'client' && data.type == 'joined' )
+				{
+					var roomWinId = 'room-' + data.room + '-win';
+					
+					var roomWindow = Ext.create( 'SimpleChat.view.room.Chat', {
+						id : roomWinId,
+						room: data.room
+					} );
+					
+					Ext.WindowManager.register( roomWindow );
+					
+					roomWindow.show();
+				}
+				
+				if ( data.source == 'room' && data.type == 'joined' )
+				{
+					//
+				}
+				
+				/**
+				 * The client parted a room
+				 */
+				if ( data.source == 'client' && data.type == 'parted' )
+				{
+					var roomWinId = 'room-' + data.room + '-win';
+					Ext.WindowManager.get( roomWinId ).destroy();
+				}
+				
+				/**
+				 * The client said something to a room
+				 */
+				if ( data.source == 'client' && data.type == 'said' )
+				{
+					//
+				}
+			}
+			
+			switch ( data.type )
+			{
+				case 'active_rooms':
+					Ext.getCmp( 'room-list' ).updateList( data.rooms );
+					break;
+				
+				case 'room_opened':
+					Ext.getCmp( 'room-list' ).updateRoom( data.room );
+					break;
+				
+				case 'message':
+					var roomWindow = Ext.WindowManager
+						.get( 'room-' + data.room + '-win' )
+						.appendRoomEvent( data );
+					break;
+				
+				case 'alert':
+					Ext.Msg.alert( "Alert!", data.message );
+					break;
+			}
+		} );
+		
+		roomList.show();
+	}
+} );
+
+		</script>
+	</body>
+
+</html>
