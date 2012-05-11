@@ -9,6 +9,8 @@
 -export( [ start_link/0, add_handler/3, nick/1, nick/2, active_rooms/1, joined_rooms/1, join/2, part/2, quit/1 ] ).
 
 -record( state, { 
+	pid,		% Client pid
+	
 	event,		% Client event handler
 	
 	nick,		% The nickname of the user
@@ -51,6 +53,7 @@ init( _ ) ->
 	{ ok, EventPid } = gen_event:start_link(),
 	gen_event:add_handler( EventPid, simplechat_echohandler, "Client Event" ),
 	{ ok, #state{
+		pid = self(),
 		event = EventPid
 	} }.
 
@@ -95,13 +98,10 @@ handle_call( { join, Room }, _From, State ) ->
 			{ ok, RoomPid } = simplechat_room_sup:room( Room ),
 			
 			% Join room
-			Result = simplechat_room:join( RoomPid ),
-			
-			% Fire event
-			gen_event:notify( State#state.event, { joined, { Room, RoomPid } } ),
+			simplechat_room:join( RoomPid, State#state.nick ),
 			
 			% Return join result and update state
-			{ reply, Result, State#state{ rooms = [ { Room, RoomPid } | State#state.rooms ] } }
+			{ reply, pending, State }
 	end;
 % Part Room
 handle_call( { part, Room }, _From, State ) ->
@@ -111,14 +111,10 @@ handle_call( { part, Room }, _From, State ) ->
 		{ Room, RoomPid } ->
 		
 			% Part room
-			Result = simplechat_room:part( RoomPid ),
+			simplechat_room:part( RoomPid ),
 			
-			% Fire event
-			gen_event:notify( State#state.event, { parted, { Room, RoomPid } } ),
-			
-			% Return part result and update state
-			{ reply, Result, State#state{ rooms = proplists:delete( Room, State#state.rooms ) } };
-	
+			{ reply, pending, State };
+				
 		% Not present in room, ok.
 		none ->
 			{ reply, ok, State }
@@ -146,6 +142,28 @@ handle_call( quit, _From, State = #state{ rooms = Rooms } ) ->
 % Catch-all
 handle_call( _Msg, _From, State ) ->
 	{ reply, error, State }.
+
+% A room has accepted the client's join request
+handle_info( { room, { RoomName, RoomPid }, joined }, State ) ->
+	
+	% Fire event
+	gen_event:notify( State#state.event, { joined, { RoomName, RoomPid } } ),
+	
+	% Return join result and update state
+	{ noreply, State#state{ rooms = [ { RoomName, RoomPid } | State#state.rooms ] } };
+
+% A room has denied the client's join request
+handle_info( { room, { _RoomName, _RoomPid }, denied }, State ) ->
+	{ noreply, State };
+
+% A room has been parted
+handle_info( { room, { RoomName, RoomPid }, parted }, State ) ->
+	
+	% Fire event
+	gen_event:notify( State#state.event, { parted, { RoomName, RoomPid } } ),
+	
+	% Remove the room from the state
+	{ noreply, State#state{ rooms = lists:delete( { RoomName, RoomPid }, State#state.rooms ) } };
 
 handle_info( _Msg, State ) ->
 	{ noreply, State }.
