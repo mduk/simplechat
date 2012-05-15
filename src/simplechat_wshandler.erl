@@ -22,7 +22,11 @@ init( { _Any, http }, Req, [] ) ->
         end.
 
 handle( Req, S ) ->
-	HttpPath = convert_path( cowboy_http_req:path( Req ) ),
+	HttpPath = case cowboy_http_req:path( Req ) of
+		{ [], _ }   -> <<"/index.html">>;
+		{ Path, _ } -> convert_path( Path )
+	end,
+	
 	FsPath = <<"www", HttpPath/binary>>,
 	
 	Body = case filelib:is_regular( FsPath ) of 
