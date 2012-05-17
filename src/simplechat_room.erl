@@ -127,8 +127,13 @@ code_change( _OldVsn, _State, _Extra ) ->
 
 % Private functions
 
+% client_allowed/2
+% 
 % Everyone is alowed!
-client_allowed( _, _ ) -> granted.
+client_allowed( _State, _ClientPid ) -> granted.
 
+% client_present/2
+%
+% Determine whether or not a client is present in the room
 client_present( State, Pid ) ->
 	lists:keyfind( Pid, #member.pid, State#state.clients ).
