@@ -101,17 +101,29 @@ websocket_init( _, Req, [] ) ->
 websocket_handle( { text, Msg }, Req, State ) ->
 	% Parse the JSON payload into a tuple and call it on the client
 	case gen_server:call( State#state.client_pid, parse_message( Msg ) ) of
+		
+		% The client didn't understand the call
 		unknown_call ->
 			Reply = encode_message( { error, "Unknown client command" } ),
 			{ reply, { text, list_to_binary( Reply ) }, Req, State, hibernate };
-		ok ->
+		
+		% Call successful, no result to return
+		ok -> 
 			{ ok, Req, State, hibernate };
+		
+		% Call successful with a result term
 		{ ok, Result } ->
 			Reply = encode_message( Result ),
 			{ reply, { text, list_to_binary( Reply ) }, Req, State, hibernate };
+		
+		% Call result pending
+		pending -> 
+			{ ok, Req, State, hibernate };
+		
+		% Any other response that 
 		Any ->
 			Reply = encode_message( { error, io_lib:format( 
-				"Unknown error occured: ~p", [ Any ] 
+				"Client process error: ~p", [ Any ] 
 			) } ),
 			{ reply, { text, list_to_binary( Reply ) }, Req, State, hibernate }
 	end;
@@ -228,6 +240,6 @@ encode_message( { error, Message } ) ->
 	mochijson2:encode( { struct, [
 		{ <<"type">>, <<"error">> },
 		{ <<"title">>, <<"Server Error">> },
-		{ <<"message">>, Message }
+		{ <<"message">>, list_to_binary( Message ) }
 	] } ). 
 
