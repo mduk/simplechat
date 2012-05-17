@@ -26,38 +26,42 @@ handle( Req, S ) ->
 		{ [], _ }   -> <<"/index.html">>;
 		{ Path, _ } -> convert_path( Path )
 	end,
-	
-	FsPath = <<"www", HttpPath/binary>>,
-	
-	Body = case filelib:is_regular( FsPath ) of 
-		true ->
-			{ ok, Bin } = file:read_file( FsPath ),
-			Bin;
-		false ->
-			<<"nope">>
-	end,
-	
-	MimeType = case filename:extension( FsPath ) of
-		<<".css">>  -> <<"text/css">>;
-		<<".js">>   -> <<"application/x-javascript">>;
-		<<".html">> -> <<"text/html">>;
-		<<".png">>  -> <<"image/png">>;
-		<<".gif">>  -> <<"image/gif">>;
-		<<".ico">>  -> <<"image/x-icon">>;
-		Any ->
-			io:format( "Unknown extension! ~p~n", [ Any ] ),
-			"text/plain"
-	end,
-	
-	Headers = [
-		{ <<"Content-Type">>, MimeType }
-	],
-	
-	{ ok, Req2 } = cowboy_http_req:reply( 200, Headers, Body, Req ),
+	{ ok, Req2 } = serve_file( Req, <<"www", HttpPath/binary>> ),
 	{ ok, Req2, S }.
 
 terminate( _, _ ) ->
 	ok.
+
+% serve_file/2
+%
+% Serves a file specified by Path
+serve_file( Req, Path ) ->
+	{ Code, Headers, Body } = case filelib:is_regular( Path ) of 
+		true ->
+			{ ok, Bin } = file:read_file( Path ),
+			{ 200, [ 
+				{ <<"Content-Type">>, mime_type( filename:extension( Path ) ) } 
+			], Bin };
+		false ->
+			{ 404, [
+				{ <<"Content-Type">>, <<"text/html">> }
+			], <<"<html><head><title>File Not Found</title></head><body><h1>File Not Found</h1></body></html>">> }
+	end,
+	
+	cowboy_http_req:reply( Code, Headers, Body, Req ).
+
+% mime_type/1
+%
+% Return a mime type for a given file extension
+mime_type( <<".css">>  ) -> <<"text/css">>;
+mime_type( <<".js">>   ) -> <<"application/x-javascript">>;
+mime_type( <<".html">> ) -> <<"text/html">>;
+mime_type( <<".png">>  ) -> <<"image/png">>;
+mime_type( <<".gif">>  ) -> <<"image/gif">>;
+mime_type( <<".ico">>  ) -> <<"image/x-icon">>;
+mime_type( Unknown     ) ->
+	io:format( "Unknown extension! ~p~n", [ Unknown ] ),
+	<<"text/plain">>.
 
 % convert_path/1
 % 
