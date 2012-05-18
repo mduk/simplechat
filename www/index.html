@@ -45,6 +45,7 @@ Ext.define( 'SimpleChat.view.room.Chat', {
 		beforeclose: function( panel, opts )
 		{
 			client.part( this.room );
+			return false;
 		}
 	},
 	
@@ -169,7 +170,6 @@ Ext.define( 'SimpleChat.view.room.ListWindow', {
 						client.connect( name, function()
 						{
 							btn.setText( "Disconnect" );
-							client.activeRooms();
 						} );
 					} );
 				}
@@ -420,6 +420,7 @@ Ext.application( {
 			
 			var data = JSON.parse( wsMsg.data );
 			
+			// Events are tagged with a source
 			if ( "source" in data )
 			{
 				/**
@@ -479,6 +480,10 @@ Ext.application( {
 			
 			switch ( data.type )
 			{
+				case 'welcome':
+					client.activeRooms();
+					break;
+					
 				case 'active_rooms':
 					Ext.getCmp( 'room-list' ).updateList( data.rooms );
 					break;

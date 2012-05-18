@@ -6,16 +6,24 @@
 -behaviour( gen_server ).
 -export( [ init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3 ] ).
 
--export( [ start_link/0, add_handler/3, nick/1, nick/2, active_rooms/1, joined_rooms/1, join/2, part/2, quit/1 ] ).
+-export( [ 
+	start_link/0, 
+	add_handler/3, 
+	proxy_call/2, 
+	nick/1, 
+	nick/2, 
+	active_rooms/1, 
+	joined_rooms/1, 
+	join/2, 
+	part/2, 
+	quit/1 
+] ).
 
 -record( state, { 
-	pid,		% Client pid
-	
-	event,		% Client event handler
-	
-	nick,		% The nickname of the user
-	
-	rooms = []	% Propertylist of rooms the client has joined
+	pid,				% Client pid
+	event,				% Client event handler
+	nick = undefined,	% The nickname of the user
+	rooms = []			% Propertylist of rooms the client has joined
 } ).
 
 start_link() ->
@@ -23,6 +31,9 @@ start_link() ->
 	
 add_handler( Client, Module, Args ) ->
 	gen_server:call( Client, { add_handler, Module, Args } ).
+
+proxy_call( Client, Call ) ->
+	{ Call, gen_server:call( Client, Call ) }.
 
 nick( Client ) ->
 	gen_server:call( Client, nick ).
@@ -76,13 +87,21 @@ handle_call( { add_handler, Module, Args }, _From, State ) ->
 	{ reply, Result, State };
 % Ident
 handle_call( { ident, Nick }, _From, State ) ->
-	{ reply, ok, State#state{ nick = Nick } };
+	case valid_nick( Nick ) of
+		true  -> { reply, ok, State#state{ nick = Nick } };
+		false -> { reply, { error, invalid_nick }, State }
+	end;
 % Set Nick
 handle_call( { nick, Nick }, _From, State ) ->
-	{ reply, ok, State#state{ nick = Nick } };
+	case valid_nick( Nick ) of
+		true  -> { reply, ok, State#state{ nick = Nick } };
+		false -> { reply, { error, invalid_nick }, State }
+	end;
 % Get Nick 
-handle_call( nick, _From, State ) ->
-	{ reply, State#state.nick, State };
+handle_call( nick, _From, State = #state{ nick=undefined } ) ->
+	{ reply, { error, undefined }, State };
+handle_call( nick, _From, State = #state{ nick=Nick } ) ->
+	{ reply, { ok, Nick }, State };
 % Active rooms (equiv to irc /list, all server rooms)
 handle_call( active_rooms, _From, State ) ->
 	Rooms = lists:map( fun( { _Name, Pid } ) ->
@@ -141,15 +160,12 @@ handle_call( { say, Room, Message }, _From, State ) ->
 	end;
 % Quit command
 handle_call( quit, _From, State = #state{ rooms = Rooms } ) ->
-	
 	part_all( Rooms ),
 	gen_event:sync_notify( State#state.event, quit ),
-	
-	io:format( "Client stopping~n" ),
 	{ stop, shutdown, ok, State#state{ rooms = [] } };
 % Catch-all
 handle_call( _Msg, _From, State ) ->
-	{ reply, error, State }.
+	{ reply, { error, unknown_call }, State }.
 
 %===============================================================================
 % handle_info/2
@@ -188,6 +204,9 @@ terminate( _Reason, _State ) ->
 
 code_change( _Vsn, State, _Opts ) ->
 	{ ok, State }.
+	
+valid_nick( <<>> ) -> false;
+valid_nick( _ ) -> true.
 	
 part_all( [] ) -> ok;
 part_all( [ { Name, Pid } | T ] ) ->

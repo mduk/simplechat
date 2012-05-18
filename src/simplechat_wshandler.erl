@@ -100,32 +100,34 @@ websocket_init( _, Req, [] ) ->
 % Received a message over the websocket
 websocket_handle( { text, Msg }, Req, State ) ->
 	% Parse the JSON payload into a tuple and call it on the client
-	case gen_server:call( State#state.client_pid, parse_message( Msg ) ) of
+	case simplechat_client:proxy_call( State#state.client_pid, parse_message( Msg ) ) of
 		
-		% The client didn't understand the call
-		unknown_call ->
-			Reply = encode_message( { error, "Unknown client command" } ),
-			{ reply, { text, list_to_binary( Reply ) }, Req, State, hibernate };
+		% Ident error
+		{ { ident, _ }, { error, invalid_nick } } ->
+			self() ! close,
+			{ reply, { text, encode_message( { error, "Invalid Nick" } ) }, Req, State };
+		
+		{ { ident, _ }, ok } ->
+			{ reply, { text, encode_message( welcome ) }, Req, State };
 		
 		% Call successful, no result to return
-		ok -> 
+		{ _, ok } -> 
 			{ ok, Req, State, hibernate };
 		
 		% Call successful with a result term
-		{ ok, Result } ->
+		{ _, { ok, Result } } ->
 			Reply = encode_message( Result ),
 			{ reply, { text, list_to_binary( Reply ) }, Req, State, hibernate };
 		
 		% Call result pending
-		pending -> 
+		{ _, pending } -> 
 			{ ok, Req, State, hibernate };
 		
-		% Any other response that 
-		Any ->
-			Reply = encode_message( { error, io_lib:format( 
-				"Client process error: ~p", [ Any ] 
+		{ _, { error, Reason } } -> 
+			Reply = encode_message( { error, io_lib:format(
+				"Client Error: ~p", [ Reason ]
 			) } ),
-			{ reply, { text, list_to_binary( Reply ) }, Req, State, hibernate }
+			{ reply, { text, Reply }, Req, State, hibernate }
 	end;
 % Catch all websocket messages
 websocket_handle( _, Req, S ) ->
@@ -141,8 +143,11 @@ websocket_info( Msg = { room_event, _ }, Req, State ) ->
 websocket_info( { send, Data }, Req, State ) when is_binary( Data ) ->
 	{ reply, { text, Data }, Req, State, hibernate };
 % Encode and send a message down the websocket
-websocket_info( { send, Message }, Req, State ) ->
+websocket_info( { send, Message }, Req, State ) when is_tuple( Message ) ->
 	{ reply, { text, encode_message( Message ) }, Req, State, hibernate };
+% Close the socket
+websocket_info( close, Req, State ) ->
+	{ shutdown, Req, State };
 % Catch all messages
 websocket_info( Msg, Req, State ) ->
 	io:format( "Wshandler Unknown info: ~p~n", [ Msg ] ),
@@ -226,6 +231,11 @@ encode_message( { client_event, { denied, { RoomName, _ } } } ) ->
 % ------------------------------------------------------------------------------
 % Misc
 % ------------------------------------------------------------------------------
+% Encode a 'welcome' message
+encode_message( welcome ) ->
+	mochijson2:encode( { struct, [
+		{ <<"type">>, <<"welcome">> }
+	] } );
 % Encode an 'active_rooms' message
 encode_message( { active_rooms, Rooms } ) ->
 	RoomStructs = lists:map( fun( RoomProps ) ->
