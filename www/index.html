@@ -1,6 +1,7 @@
 <html>
 
 	<head>
+		<link rel="stylesheet" type="text/css" href="icons.css">
 		<link rel="stylesheet" type="text/css" href="extjs/resources/css/ext-all.css">
 		<script type="text/javascript" src="extjs/ext-all-debug.js"></script>
 	</head>
@@ -37,6 +38,8 @@
 
 Ext.define( 'SimpleChat.view.room.Chat', {
 	extend: 'Ext.window.Window',
+	
+	iconCls: 'icon-user-comment',
 	
 	width: 400,
 	height: 600,
@@ -153,6 +156,7 @@ Ext.define( 'SimpleChat.view.room.Chat', {
 Ext.define( 'SimpleChat.view.room.ListWindow', {
 	extend: 'Ext.window.Window',
 	title: 'Chat Rooms',
+	iconCls: 'icon-comments',
 	width: 600,
 	height: 600,
 	scrollable: true,
@@ -161,6 +165,7 @@ Ext.define( 'SimpleChat.view.room.ListWindow', {
 	tbar: [
 		{
 			text: "Connect",
+			iconCls: 'icon-connect',
 			handler: function( btn, e )
 			{
 				if ( btn.getText() == "Connect" )
@@ -170,6 +175,7 @@ Ext.define( 'SimpleChat.view.room.ListWindow', {
 						client.connect( name, function()
 						{
 							btn.setText( "Disconnect" );
+							btn.setIconCls( 'icon-disconnect' );
 						} );
 					} );
 				}
@@ -177,11 +183,13 @@ Ext.define( 'SimpleChat.view.room.ListWindow', {
 				{
 					client.disconnect();
 					btn.setText( "Connect" );
+					btn.setIconCls( 'icon-connect' );
 				}
 			}	
 		},
 		{ 
 			text: "Create Room",
+			iconCls: 'icon-comment-add',
 			handler: function( btn, e )
 			{
 				Ext.Msg.prompt( 'Room Name', 'Specify room name:', function( clicked, name )
@@ -198,6 +206,7 @@ Ext.define( 'SimpleChat.view.room.ListWindow', {
 		},
 		{
 			text: "Refresh List",
+			iconCls: 'icon-arrow-refresh',
 			handler: function( btn, e )
 			{
 				client.activeRooms();
