@@ -176,6 +176,12 @@ Ext.define( 'SimpleChat.view.room.ListWindow', {
 						{
 							btn.setText( "Disconnect" );
 							btn.setIconCls( 'icon-disconnect' );
+							
+							var createRoomBtn = btn.nextSibling();
+							createRoomBtn.setDisabled( false )
+							
+							var refreshListBtn = createRoomBtn.nextSibling();
+							refreshListBtn.setDisabled( false );
 						} );
 					} );
 				}
@@ -184,12 +190,19 @@ Ext.define( 'SimpleChat.view.room.ListWindow', {
 					client.disconnect();
 					btn.setText( "Connect" );
 					btn.setIconCls( 'icon-connect' );
+					
+					var createRoomBtn = btn.nextSibling();
+					createRoomBtn.setDisabled( true )
+					
+					var refreshListBtn = createRoomBtn.nextSibling();
+					refreshListBtn.setDisabled( true );
 				}
 			}	
 		},
 		{ 
 			text: "Create Room",
 			iconCls: 'icon-comment-add',
+			disabled: true,
 			handler: function( btn, e )
 			{
 				Ext.Msg.prompt( 'Room Name', 'Specify room name:', function( clicked, name )
@@ -207,6 +220,7 @@ Ext.define( 'SimpleChat.view.room.ListWindow', {
 		{
 			text: "Refresh List",
 			iconCls: 'icon-arrow-refresh',
+			disabled: true,
 			handler: function( btn, e )
 			{
 				client.activeRooms();
