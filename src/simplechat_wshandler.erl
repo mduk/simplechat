@@ -107,6 +107,7 @@ websocket_handle( { text, Msg }, Req, State ) ->
 			self() ! close,
 			{ reply, { text, encode_message( { error, "Invalid Nick" } ) }, Req, State };
 		
+		% Ident successful
 		{ { ident, _ }, ok } ->
 			{ reply, { text, encode_message( welcome ) }, Req, State };
 		
