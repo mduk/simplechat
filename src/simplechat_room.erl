@@ -3,9 +3,14 @@
 -behaviour( gen_server ).
 -export( [ init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3 ] ).
 
--export( [ start_link/1, info/1, join/2, part/1, say/2 ] ).
+-export( [ start_link/1, info/1, join/2, part/1, say/2, topic/2 ] ).
 
--record( state, { name, event, clients = [], topic } ).
+-record( state, { 
+	name, 
+	event, 
+	clients = [], 
+	topic = { open, <<"">> }
+} ).
 
 -record( member, { pid, nick } ).
 
@@ -18,9 +23,16 @@ join( Room, Nick ) ->
 part( Room ) ->
 	gen_server:cast( Room, { part, self() } ).
 
-say( Room, Message ) ->
+say( Room, Message ) when is_binary( Message ) ->
 	gen_server:cast( Room, { say, self(), Message } ).
 
+topic( Room, Topic ) when is_binary( Topic ) ->
+	gen_server:call( Room, { set_topic, Topic } );
+topic( Room, lock ) ->
+	gen_server:call( Room, { lock_topic, self() } );
+topic( Room, unlock ) ->
+	gen_server:call( Room, { unlock_topic, self() } ).
+	
 info( Room ) ->
 	gen_server:call( Room, info ).
 
@@ -35,12 +47,49 @@ init( { Name } ) ->
 	} }.
 
 % Get room info
-handle_call( info, _, State ) ->
+handle_call( info, _, State = #state{ name = Name, clients = Clients, topic = { _, Topic } } ) ->
 	{ reply, [
-		{ name, State#state.name },
-		{ members, lists:flatlength( State#state.clients ) },
-		{ topic, State#state.topic }
+		{ name, Name },
+		{ members, lists:flatlength( Clients ) },
+		{ topic, Topic }
 	], State };
+
+% Set topic when open
+handle_call( { set_topic, Topic }, _, State = #state{ topic = { open, _ } } ) ->
+	fire( State, { topic_changed, Topic } ),
+	{ reply, ok, State#state{ topic = { open, Topic } } };
+
+% Set topic when locked
+handle_call( { set_topic, _ }, _, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
+	{ reply, { error, { topic_locked, KeyHolder } }, State };
+
+% Lock topic when open
+handle_call( { lock_topic, KeyHolder }, _, State = #state{ topic = { open, Topic } } ) ->
+	fire( State, { topic_locked, Topic } ),
+	{ reply, ok, State#state{ topic = { { locked, KeyHolder }, Topic } } };
+
+% Lock topic when locked by caller
+handle_call( { lock_topic, KeyHolder }, _, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
+	{ reply, ok, State };
+
+% Lock topic when locked
+handle_call( { lock_topic, _ }, _, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
+	{ reply, { error, { topic_locked, KeyHolder } }, State };
+
+% Unlock topic when open
+handle_call( { unlock_topic, _ }, _, State = #state{ topic = { open, _ } } ) ->
+	{ reply, ok, State };
+
+% Unlock topic when locked by caller
+handle_call( { unlock_topic, KeyHolder }, _, State = #state{ topic = { { locked, KeyHolder }, Topic } } ) ->
+	fire( State, { topic_unlocked, Topic } ),
+	{ reply, ok, State#state{ topic = { open, Topic } } };
+
+% Unlock topic when locked
+handle_call( { unlock_topic, _ }, _, State = #state{ topic = { { locked, _ }, _ } } ) ->
+	{ reply, { error, denied }, State };
+	
+% Catch all
 handle_call( _Msg, _From, State ) ->
 	{ reply, unknown_call, State }.
 

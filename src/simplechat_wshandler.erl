@@ -211,7 +211,15 @@ encode_message( { room_event, { Room, _ }, { message, { Nick, _ }, Message } } )
 		{ <<"client">>, Nick },
 		{ <<"body">>, Message }
 	] } );
-encode_message( { room_event, _, { Motion, Room, Client } } ) when Motion =:= joined; Motion =:= parted ->
+encode_message( { room_event, { Room, _ }, { Event, Topic } } ) 
+when Event =:= topic_changed; Event =:= topic_locked; Event =:= topic_unlocked ->
+	mochijson2:encode( { struct, [
+		{ source, room },
+		{ room, Room },
+		{ type, Event },
+		{ topic, Topic }
+	] } );
+encode_message( { room_event, { Room, _ }, { Motion, _, Client } } ) when Motion =:= joined; Motion =:= parted ->
 	mochijson2:encode( { struct, [
 		{ <<"source">>, <<"room">> },
 		{ <<"type">>, atom_to_binary( Motion, utf8 ) },
