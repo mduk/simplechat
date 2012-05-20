@@ -3,7 +3,7 @@
 -behaviour( gen_server ).
 -export( [ init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3 ] ).
 
--export( [ start_link/1, info/1, join/2, part/1, say/3 ] ).
+-export( [ start_link/1, info/1, join/2, part/1, say/2 ] ).
 
 -record( state, { name, event, clients = [], topic } ).
 
@@ -18,8 +18,8 @@ join( Room, Nick ) ->
 part( Room ) ->
 	gen_server:cast( Room, { part, self() } ).
 
-say( Room, Author, Message ) ->
-	gen_server:cast( Room, { message, Author, Message } ).
+say( Room, Message ) ->
+	gen_server:cast( Room, { say, self(), Message } ).
 
 info( Room ) ->
 	gen_server:call( Room, info ).
@@ -54,12 +54,11 @@ handle_cast( { join, ClientPid, Nick }, State ) ->
 		granted ->
 			
 			% Add client-room handler
-			gen_event:add_handler( State#state.event, simplechat_client_room_handler, ClientPid ),
+			Args = { ClientPid, { State#state.name, self() } },
+			gen_event:add_handler( State#state.event, simplechat_client_room_handler, Args ),
 			
 			% Fire joined event
-			gen_event:notify( State#state.event, 
-				{ joined, State#state.name, Nick } 
-			),
+			fire( State, { joined, State#state.name, Nick } ),
 			
 			% Notify client that it joined the room
 			ClientPid ! { room, { State#state.name, self() }, joined },
@@ -88,9 +87,7 @@ handle_cast( { part, ClientPid }, State ) ->
 			Member ->
 				
 				% Fire parted event - done first so the parting client also gets the event
-				gen_event:notify( State#state.event,
-					{ parted, State#state.name, Member#member.nick } 
-				),
+				fire( State, { parted, State#state.name, Member#member.nick } ),
 				
 				% Delete client-room handler
 				gen_event:delete_handler( State#state.event, simplechat_client_room_handler, ClientPid ),
@@ -106,8 +103,14 @@ handle_cast( { part, ClientPid }, State ) ->
 			end,
 				
 	{ noreply, NewState };
-handle_cast( { message, Author, Body }, State ) ->
-	gen_event:notify( State#state.event, { message, State#state.name, Author, Body } ),
+% Client says something to the room
+handle_cast( { say, ClientPid, Message }, State ) ->
+	case client_present( State, ClientPid ) of
+		false -> 
+			ClientPid ! { error, not_joined };
+		#member{ nick=Nick } -> 
+			fire( State, { message, { Nick, ClientPid }, Message } )
+	end,	
 	{ noreply, State };
 handle_cast( _Msg, State ) ->
 	{ noreply, State }.
@@ -115,10 +118,6 @@ handle_cast( _Msg, State ) ->
 handle_info( _Msg, State ) ->
 	{ noreply, State }.
 
-terminate( room_empty, State ) ->
-	spawn( fun() ->
-		gen_event:notify( State#state.event, { closed, room_empty } )
-	end );
 terminate( _Reason, _State ) ->
 	ok.
 
@@ -126,6 +125,17 @@ code_change( _OldVsn, _State, _Extra ) ->
 	ok.
 
 % Private functions
+
+% fire/2
+%
+% Fires an event, or list of events to the room event manager
+fire( State, Event ) when is_tuple( Event ) ->
+	gen_event:notify( State#state.event, Event );
+fire( State, [ Event | Events ] ) ->
+	fire( State, Event ),
+	fire( State, Events );
+fire( _, [] ) ->
+	ok.
 
 % client_allowed/2
 % 

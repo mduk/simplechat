@@ -138,7 +138,7 @@ websocket_handle( _, Req, S ) ->
 websocket_info( Msg = { client_event, _ }, Req, State ) ->
 	{ reply, { text, encode_message( Msg ) }, Req, State, hibernate };
 % Room Events
-websocket_info( Msg = { room_event, _ }, Req, State ) ->
+websocket_info( Msg = { room_event, _, _ }, Req, State ) ->
 	{ reply, { text, encode_message( Msg ) }, Req, State, hibernate };
 % Send raw data down the websocket
 websocket_info( { send, Data }, Req, State ) when is_binary( Data ) ->
@@ -203,15 +203,15 @@ parse_message( JsonBin ) ->
 % ==============================================================================
 % Room Events
 % ------------------------------------------------------------------------------
-encode_message( { room_event, { message, Room, Client, Message } } ) ->
+encode_message( { room_event, { Room, _ }, { message, { Nick, _ }, Message } } ) ->
 	mochijson2:encode( { struct, [
 		{ <<"source">>, <<"room">> },
 		{ <<"type">>, <<"message">> },
 		{ <<"room">>, Room },
-		{ <<"client">>, Client },
+		{ <<"client">>, Nick },
 		{ <<"body">>, Message }
 	] } );
-encode_message( { room_event, { Motion, Room, Client } } ) when Motion =:= joined; Motion =:= parted ->
+encode_message( { room_event, _, { Motion, Room, Client } } ) when Motion =:= joined; Motion =:= parted ->
 	mochijson2:encode( { struct, [
 		{ <<"source">>, <<"room">> },
 		{ <<"type">>, atom_to_binary( Motion, utf8 ) },
@@ -221,6 +221,8 @@ encode_message( { room_event, { Motion, Room, Client } } ) when Motion =:= joine
 % ------------------------------------------------------------------------------
 % Client Events
 % ------------------------------------------------------------------------------
+encode_message( { client_event, Event = { room_event, _, _ } } ) ->
+	encode_message( Event );
 encode_message( { client_event, { Motion, { RoomName, _ } } } ) when Motion =:= joined; Motion =:= parted ->
 	mochijson2:encode( { struct, [
 		{ <<"source">>, <<"client">> },

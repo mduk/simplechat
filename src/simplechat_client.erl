@@ -73,7 +73,7 @@ init( _ ) ->
 %===============================================================================
 
 % A room event, pass it straight on to the client event manager
-handle_cast( Event = { room_event, _ }, State ) ->
+handle_cast( Event = { room_event, _, _ }, State ) ->
 	gen_event:notify( State#state.event, Event ),
 	{ noreply, State }.
 
@@ -151,7 +151,7 @@ handle_call( { say, Room, Message }, _From, State ) ->
 	case proplists:lookup( Room, State#state.rooms ) of
 		
 		{ Room, RoomPid } ->
-			Result = simplechat_room:say( RoomPid, State#state.nick, Message ),
+			Result = simplechat_room:say( RoomPid, Message ),
 			{ reply, Result, State };
 			
 		none ->
