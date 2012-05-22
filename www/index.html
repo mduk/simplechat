@@ -252,12 +252,13 @@ Ext.define( 'SimpleChat.view.room.List', {
 	initComponent: function()
 	{
 		this.store = {
-			fields: [ 'name', 'members' ],
+			fields: [ 'name', 'topic', 'members' ],
 			data: []
 		};
 		
 		this.columns = [
 			{ header: 'Room Name', dataIndex: 'name', flex: 1 },
+			{ header: 'Topic', dataIndex: 'topic', flex: 1 },
 			{ header: 'Members', dataIndex: 'members' }
 		];
 		
