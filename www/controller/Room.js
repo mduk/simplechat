@@ -6,12 +6,23 @@ Ext.define( 'SimpleChat.controller.Room', {
 		//
 	},
 	
+	/**
+	 * Handle room events
+	 *
+	 * @param object event The room event object
+	 */
 	handleEvent: function( event )
 	{
 		switch ( event.type )
 		{
 			case "joined":
-				Ext.getCmp( this.roomWindowId( event ) ).appendRoomEvent( event );
+			case "parted":
+			case "message":
+				var windowId = this.roomWindowId( { 
+					name: event.room
+				} );
+				Ext.getCmp( windowId )
+					.appendRoomEvent( event );
 				break;
 			
 			default:
@@ -21,11 +32,25 @@ Ext.define( 'SimpleChat.controller.Room', {
 		}
 	},
 	
+	/**
+	 * Get the room window id for a given room model.
+	 *
+	 * @param object room The room model
+	 */
 	roomWindowId: function( room )
 	{
 		return 'room-' + room.name + '-win';
 	},
 	
+	/**
+	 * Get a room window.
+	 * 
+	 * If the room window doesn't exist, then
+	 * create it and register it with the
+	 * window manager before returning it.
+	 *
+	 * @param object room The room model
+	 */
 	roomWindow: function( room )
 	{
 		var 
