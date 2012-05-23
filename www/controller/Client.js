@@ -88,8 +88,7 @@ Ext.define( 'SimpleChat.controller.Client', {
 	showRoomList: function()
 	{
 		this.roomList = Ext.create( 'SimpleChat.view.room.ListWindow', {
-			id: 'room-list-win'//,
-			//client: this.client
+			id: 'room-list-win'
 		} );
 		
 		Ext.WindowManager.register( this.roomList );
@@ -284,7 +283,10 @@ Ext.define( 'SimpleChat.controller.Client', {
 		{
 			case "joined":
 				this.getController( 'Room' )
-					.roomWindow( { name: event.room, topic: ".)(." } )
+					.roomWindow( { 
+						name: event.room, 
+						topic: "No topic" 
+					} )
 					.show();
 				break;
 			
