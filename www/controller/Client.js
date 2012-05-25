@@ -300,6 +300,12 @@ Ext.define( 'SimpleChat.controller.Client', {
 					.show();
 				break;
 			
+			case "parted":
+				this.getController( 'Room' )
+					.roomWindow( { name: event.room } )
+					.hide( this.roomListWindow() );
+				break;
+			
 			default:
 				console.log( 'Unknown client event!' );
 				console.log( event );
