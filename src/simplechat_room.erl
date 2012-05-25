@@ -26,6 +26,9 @@ part( Room ) ->
 say( Room, Message ) when is_binary( Message ) ->
 	gen_server:cast( Room, { say, self(), Message } ).
 
+topic( Room ) ->
+	gen_server:call( Room, topic ).
+
 topic( Room, Topic ) when is_binary( Topic ) ->
 	gen_server:call( Room, { set_topic, Topic } );
 topic( Room, lock ) ->
@@ -47,12 +50,12 @@ init( { Name } ) ->
 	} }.
 
 % Get room info
-handle_call( info, _, State = #state{ name = Name, clients = Clients, topic = { _, Topic } } ) ->
-	{ reply, [
-		{ name, Name },
-		{ members, lists:flatlength( Clients ) },
-		{ topic, Topic }
-	], State };
+handle_call( info, _, State ) ->
+	{ reply, gather_room_info( State ), State };
+
+% Get topic
+handle_call( topic, _, State = #state{ topic = { _, Topic } } ) ->
+	{ reply, Topic, State };
 
 % Set topic when open
 handle_call( { set_topic, Topic }, _, State = #state{ topic = { open, _ } } ) ->
@@ -174,6 +177,13 @@ code_change( _OldVsn, _State, _Extra ) ->
 	ok.
 
 % Private functions
+
+gather_room_info( #state{ name = Name, clients = Clients, topic = { _, Topic } } ) -> 
+	[
+		{ name, Name },
+		{ members, lists:flatlength( Clients ) },
+		{ topic, Topic }
+	].
 
 % fire/2
 %
