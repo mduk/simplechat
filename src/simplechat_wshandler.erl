@@ -182,6 +182,19 @@ parse_message( { join, Props } ) ->
 parse_message( { part, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
 	{ part, Room };
+% Parse a 'set_topic' message
+parse_message( { set_topic, Props } ) ->
+	{ _, Room } = proplists:lookup( <<"room">>, Props ),
+	{ _, Topic } = proplists:lookup( <<"topic">>, Props ),
+	{ set_topic, Room, Topic };
+% Parse a 'lock_topic' message
+parse_message( { lock_topic, Props } ) ->
+	{ _, Room } = proplists:lookup( <<"room">>, Props ),
+	{ lock_topic, Room };
+% Parse a 'unlock_topic' message
+parse_message( { unlock_topic, Props } ) ->
+	{ _, Room } = proplists:lookup( <<"room">>, Props ),
+	{ unlock_topic, Room };
 % Parse a 'say' message
 parse_message( { say, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),

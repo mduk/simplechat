@@ -146,6 +146,34 @@ handle_call( { part, Room }, _From, State ) ->
 		none ->
 			{ reply, ok, State }
 	end;
+% Set a room topic
+handle_call( { set_topic, Room, Topic }, _From, State ) ->
+	case proplists:lookup( Room, State#state.rooms ) of
+		
+		{ Room, RoomPid } ->
+			Result = simplechat_room:topic( RoomPid, Topic ),
+			{ reply, Result, State };
+			
+		none ->
+			{ reply, { error, not_present_in_room }, State }
+			
+	end;
+% Lock room topic
+handle_call( { Lock, Room }, _From, State ) when Lock =:= lock_topic; Lock =:= unlock_topic ->
+	case proplists:lookup( Room, State#state.rooms ) of
+		
+		{ Room, RoomPid } ->
+			Call = case Lock of 
+				lock_topic   -> lock;
+				unlock_topic -> unlock
+			end,
+			Result = simplechat_room:topic( RoomPid, Call ),
+			{ reply, Result, State };
+			
+		none ->
+			{ reply, { error, not_present_in_room }, State }
+			
+	end;
 % Say something in a room
 handle_call( { say, Room, Message }, _From, State ) ->
 	case proplists:lookup( Room, State#state.rooms ) of
