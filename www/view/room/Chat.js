@@ -97,6 +97,36 @@ Ext.define( 'SimpleChat.view.room.Chat', {
 					).apply( data )
 				} );
 				break;
+			
+			case 'topic_changed':
+				timeline.add( {
+					border: false,
+					cls: 'room-event topic-changed',
+					html: new Ext.XTemplate( 
+						'<span class="client">Topic</span> {topic}.'
+					).apply( data )
+				} );
+				break;
+			
+			case 'topic_locked':
+				timeline.add( {
+					border: false,
+					cls: 'room-event topic-changed',
+					html: new Ext.XTemplate( 
+						'Topic Locked'
+					).apply( data )
+				} );
+				break;
+			
+			case 'topic_unlocked':
+				timeline.add( {
+					border: false,
+					cls: 'room-event topic-changed',
+					html: new Ext.XTemplate( 
+						'Topic Unlocked'
+					).apply( data )
+				} );
+				break;
 				
 			case 'message':
 				timeline.add( { 

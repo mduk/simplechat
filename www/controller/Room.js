@@ -81,16 +81,21 @@ Ext.define( 'SimpleChat.controller.Room', {
 	 */
 	handleEvent: function( event )
 	{
+		var roomWindow = this.roomWindow( { name: event.room } );
+		
 		switch ( event.type )
 		{
 			case "joined":
 			case "parted":
 			case "message":
-				var windowId = this.roomWindowId( { 
-					name: event.room
-				} );
-				Ext.getCmp( windowId )
-					.appendRoomEvent( event );
+			case "topic_locked":
+			case "topic_unlocked":
+				roomWindow.appendRoomEvent( event );
+				break;
+			
+			case "topic_changed":
+				roomWindow.setTitle( "Room: " + event.room + " (" + event.topic + ")" );
+				roomWindow.appendRoomEvent( event );
 				break;
 			
 			default:
