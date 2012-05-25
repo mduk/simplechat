@@ -126,6 +126,7 @@ Ext.define( 'SimpleChat.controller.Client', {
 		// Received websocket message
 		this.ws.onmessage = function( wsMsg )
 		{
+			console.log( "Recv: " + wsMsg.data );
 			// Parse the json payload and pass it to the controller
 			var msg = JSON.parse( wsMsg.data );
 			controller.handle( msg );
@@ -204,7 +205,9 @@ Ext.define( 'SimpleChat.controller.Client', {
 	 */
 	sendPacket: function( packet )
 	{
-		this.ws.send( JSON.stringify( packet ) );
+		var packet = JSON.stringify( packet );
+		console.log( "Send: " + packet );
+		this.ws.send( packet );
 	},
 	
 	/**
