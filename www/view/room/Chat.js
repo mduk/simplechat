@@ -103,7 +103,7 @@ Ext.define( 'SimpleChat.view.room.Chat', {
 					border: false,
 					cls: 'room-event topic-changed',
 					html: new Ext.XTemplate( 
-						'<span class="client">Topic</span> {topic}.'
+						'<span>Topic</span> {topic}'
 					).apply( data )
 				} );
 				break;
