@@ -3,7 +3,7 @@ Ext.define( 'SimpleChat.controller.Room', {
 	
 	init: function()
 	{
-		var controller = this; //beforeclose
+		var controller = this;
 		
 		this.control( {
 			'window' : {
