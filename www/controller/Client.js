@@ -82,18 +82,25 @@ Ext.define( 'SimpleChat.controller.Client', {
 	},
 	
 	/**
-	 * Show the room list, if it
-	 * doesn't exist, create it.
+	 * Get the room list window
+	 *
+	 * If the room list window hasn't already 
+	 * been created and registered, then do so.
 	 */
-	showRoomList: function()
+	roomListWindow: function()
 	{
-		this.roomList = Ext.create( 'SimpleChat.view.room.ListWindow', {
-			id: 'room-list-win'
-		} );
+		this.roomList = Ext.WindowManager.get( 'room-list-win' );
 		
-		Ext.WindowManager.register( this.roomList );
+		if ( this.roomList == undefined )
+		{
+			this.roomList = Ext.create( 'SimpleChat.view.room.ListWindow', {
+				id: 'room-list-win'
+			} );
+			
+			Ext.WindowManager.register( this.roomList );
+		}
 		
-		this.roomList.show();
+		return this.roomList;
 	},
 	
 	/**
