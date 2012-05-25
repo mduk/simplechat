@@ -18,7 +18,7 @@
 	border-bottom: 1px grey dotted;
 }
 
-.room-event .client {
+.room-event span {
 	font-weight: bold;
 }
 
@@ -30,11 +30,17 @@
 	text-align: center;
 }
 
+.room-event.topic-changed {
+	text-align: center;
+	font-style: italic;
+}
+
 .room-event.message .body {
 	padding-left: 1em;
 }
 
-.room-event.message .client:after {
+.room-event.message span:after,
+.room-event.topic-changed span:after {
 	content: ": ";
 }
 		</style>
