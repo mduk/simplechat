@@ -3,7 +3,7 @@
 -behaviour( gen_server ).
 -export( [ init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3 ] ).
 
--export( [ start_link/1, info/1, join/2, part/1, say/2, topic/2 ] ).
+-export( [ start_link/1, info/1, join/2, part/1, say/2, topic/1, topic/2 ] ).
 
 -record( state, { 
 	name, 
