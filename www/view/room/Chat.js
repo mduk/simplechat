@@ -5,14 +5,6 @@ Ext.define( 'SimpleChat.view.room.Chat', {
 	width: 400,
 	height: 600,
 	
-	listeners: {
-		beforeclose: function( panel, opts )
-		{
-			client.part( this.room );
-			return false;
-		}
-	},
-	
 	initComponent: function()
 	{
 		this.title = "Room: " + this.room.name + ' (' + this.room.topic + ')';
@@ -20,6 +12,20 @@ Ext.define( 'SimpleChat.view.room.Chat', {
 	},
 	
 	layout: 'border',
+	
+	tbar: [
+		{
+			text: "Set Topic",
+			id: 'setTopicButton',
+			iconCls: 'icon-application-edit'
+		},
+		{
+			text: "Lock Topic",
+			id: 'lockTopicButton',
+			iconCls: 'icon-lock'	
+		}
+	],
+	
 	items: [
 		{ 
 			autoScroll: true,

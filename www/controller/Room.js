@@ -3,7 +3,75 @@ Ext.define( 'SimpleChat.controller.Room', {
 	
 	init: function()
 	{
-		//
+		var controller = this; //beforeclose
+		
+		this.control( {
+			'window' : {
+				beforeclose: function( win, event )
+				{
+					controller.getController( 'Client' ).part( win.room.name );
+					return false;
+				}
+			},
+			'#setTopicButton' : {
+				click: function( btn, event )
+				{
+					Ext.Msg.prompt( 'Set Topic', 'New topic:', function( clicked, topic )
+					{
+						if ( clicked != 'ok' )
+						{
+							return;
+						}
+						
+						var room = btn.up( 'window' ).room;
+						controller.setTopic( room.name, topic );
+					} );
+				}
+			},
+			'#lockTopicButton' : {
+				click: function( btn, event )
+				{
+					var 
+						btnText = btn.getText(),
+						room = btn.up( 'window' ).room;
+					
+					
+					if ( btnText == 'Lock Topic' )
+					{
+						controller.lockTopic( room.name );
+					}
+					else
+					{
+						controller.lockTopic( room.name );
+					}
+				}
+			}
+		} );
+	},
+	
+	setTopic: function( room, topic )
+	{
+		this.getController( 'Client' ).sendPacket( {
+			type: "set_topic",
+			room: room,
+			topic: topic
+		} );
+	},
+	
+	lockTopic: function( room )
+	{
+		this.getController( 'Client' ).sendPacket( {
+			type: 'lock_topic',
+			room: room
+		} );
+	},
+	
+	unlockTopic: function( room )
+	{
+		this.getController( 'Client' ).sendPacket( {
+			type: 'unlock_topic',
+			room: room
+		} );
 	},
 	
 	/**
