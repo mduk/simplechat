@@ -15,30 +15,15 @@ Ext.define( 'SimpleChat.view.room.ListWindow', {
 		},
 		{ 
 			text: "Create Room",
+			id: "createRoomButton",
 			iconCls: 'icon-comment-add',
-			disabled: true,
-			handler: function( btn, e )
-			{
-				Ext.Msg.prompt( 'Room Name', 'Specify room name:', function( clicked, name )
-				{
-					if ( clicked != 'ok' )
-					{
-						return;
-					}
-					
-					client.join( name );
-					client.activeRooms();
-				} );
-			}
+			disabled: true
 		},
 		{
 			text: "Refresh List",
+			id: "refreshList",
 			iconCls: 'icon-arrow-refresh',
-			disabled: true,
-			handler: function( btn, e )
-			{
-				client.activeRooms();
-			}
+			disabled: true
 		}
 	],
 	

@@ -38,6 +38,31 @@ Ext.define( 'SimpleChat.controller.Client', {
 				}
 			},
 			
+			'#room-list-win #createRoomButton' : {
+				click: function( btn, e )
+				{
+					var controller = this;
+					
+					Ext.Msg.prompt( 'Room Name', 'Specify room name:', function( clicked, name )
+					{
+						if ( clicked != 'ok' )
+						{
+							return;
+						}
+						
+						controller.join( name );
+						controller.activeRooms();
+					} );
+				}
+			},
+			
+			'#room-list-win #refreshListButton' : {
+				click: function( btn, e )
+				{
+					this.activeRooms();
+				}
+			},
+			
 			// Room list item
 			'#room-list-win #room-list' : {
 				// Double Click
@@ -201,6 +226,13 @@ Ext.define( 'SimpleChat.controller.Client', {
 		} );
 	},
 	
+	activeRooms: function()
+	{
+		this.sendPacket( {
+			type: 'active_rooms'
+		} );
+	},
+	
 	/**
 	 * Sends a packet to the server
 	 *
@@ -232,9 +264,7 @@ Ext.define( 'SimpleChat.controller.Client', {
 			// = Welcome =
 			// Request the room list
 			case 'welcome':
-				this.sendPacket( {
-					type: 'active_rooms'
-				} );
+				this.activeRooms();
 				break;
 			
 			// = Active Room list =

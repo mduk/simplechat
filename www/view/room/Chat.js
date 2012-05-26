@@ -8,7 +8,13 @@ Ext.define( 'SimpleChat.view.room.Chat', {
 	
 	initComponent: function()
 	{
-		this.title = "Room: " + this.room.name + ' (' + this.room.topic + ')';
+		this.title = "Room: " + this.room.name;
+		
+		if ( this.room.topic != '' )
+		{
+			this.title += ' (' + this.room.topic + ')';
+		}
+		
 		this.callParent();
 	},
 	
