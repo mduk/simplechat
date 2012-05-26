@@ -200,10 +200,10 @@ handle_call( _Msg, _From, State ) ->
 %===============================================================================
 
 % A room has accepted the client's join request
-handle_info( { room, { RoomName, RoomPid }, joined }, State ) ->
+handle_info( { room, { RoomName, RoomPid }, joined, RoomInfo }, State ) ->
 	
 	% Fire event
-	gen_event:notify( State#state.event, { joined, { RoomName, RoomPid } } ),
+	gen_event:notify( State#state.event, { joined, RoomInfo } ),
 	
 	% Return join result and update state
 	{ noreply, State#state{ rooms = [ { RoomName, RoomPid } | State#state.rooms ] } };

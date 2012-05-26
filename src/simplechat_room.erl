@@ -113,7 +113,7 @@ handle_cast( { join, ClientPid, Nick }, State ) ->
 			fire( State, { joined, State#state.name, Nick } ),
 			
 			% Notify client that it joined the room
-			ClientPid ! { room, { State#state.name, self() }, joined },
+			ClientPid ! { room, { State#state.name, self() }, joined, gather_room_info( State ) },
 			
 			% Create the member record
 			Member = #member{ pid = ClientPid, nick = Nick },

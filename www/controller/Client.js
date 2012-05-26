@@ -293,16 +293,13 @@ Ext.define( 'SimpleChat.controller.Client', {
 		{
 			case "joined":
 				this.getController( 'Room' )
-					.roomWindow( { 
-						name: event.room, 
-						topic: "No topic" 
-					} )
+					.roomWindow( event.room )
 					.show();
 				break;
 			
 			case "parted":
 				this.getController( 'Room' )
-					.roomWindow( { name: event.room } )
+					.roomWindow( event.room )
 					.hide( this.roomListWindow() );
 				break;
 			

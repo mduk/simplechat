@@ -242,14 +242,28 @@ encode_message( { room_event, { Room, _ }, { Motion, _, Client } } ) when Motion
 % ------------------------------------------------------------------------------
 % Client Events
 % ------------------------------------------------------------------------------
+
+% Relayed room event
 encode_message( { client_event, Event = { room_event, _, _ } } ) ->
 	encode_message( Event );
-encode_message( { client_event, { Motion, { RoomName, _ } } } ) when Motion =:= joined; Motion =:= parted ->
+
+% Client joined room
+encode_message( { client_event, { joined, RoomInfo } } ) ->
+	mochijson2:encode( { struct, [
+		{ source, client },
+		{ type, joined },
+		{ room, { struct, RoomInfo } }
+	] } );
+
+% Client parted room
+encode_message( { client_event, { parted, { RoomName, _ } } } ) ->
 	mochijson2:encode( { struct, [
 		{ <<"source">>, <<"client">> },
-		{ <<"type">>, atom_to_binary( Motion, utf8 ) },
+		{ <<"type">>, parted },
 		{ <<"room">>, RoomName }
 	] } );
+
+% Client denied from room
 encode_message( { client_event, { denied, { RoomName, _ } } } ) ->
 	encode_message( { error, <<"Access to room \"", RoomName/binary, "\" denied.">> } );
 % ------------------------------------------------------------------------------
