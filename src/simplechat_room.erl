@@ -180,6 +180,7 @@ code_change( _OldVsn, _State, _Extra ) ->
 
 gather_room_info( #state{ name = Name, clients = Clients, topic = { _, Topic } } ) -> 
 	[
+		{ pid, self() },
 		{ name, Name },
 		{ members, lists:flatlength( Clients ) },
 		{ topic, Topic }
