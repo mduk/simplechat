@@ -1,6 +1,7 @@
 Ext.define( 'SimpleChat.view.room.Chat', {
 	extend: 'Ext.window.Window',
 	iconCls: 'icon-user-comment',
+	alias: 'widget.roomChatWindow',
 	maximizable: true,
 	width: 400,
 	height: 600,
@@ -114,7 +115,7 @@ Ext.define( 'SimpleChat.view.room.Chat', {
 					border: false,
 					cls: 'room-event message',
 					html: new Ext.XTemplate(
-						'<span class="client">{client}</span><span class="body">{body}</span>'
+						'<span class="client">{client}</span>{body}'
 					).apply( data ) 
 				} );
 				break;

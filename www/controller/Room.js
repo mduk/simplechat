@@ -6,11 +6,15 @@ Ext.define( 'SimpleChat.controller.Room', {
 		var controller = this;
 		
 		this.control( {
-			'window' : {
+			'roomChatWindow' : {
 				beforeclose: function( win, event )
 				{
 					controller.getController( 'Client' ).part( win.room.name );
 					return false;
+				},
+				activate: function( win, event )
+				{
+					win.down( 'textfield' ).focus();
 				}
 			},
 			'#setTopicButton' : {
