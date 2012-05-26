@@ -53,11 +53,6 @@ Ext.define( 'SimpleChat.view.room.Chat', {
 		}
 	],
 	
-	say: function( Message )
-	{
-		client.say( this.room, Message );
-	},
-	
 	appendRoomEvent: function( data )
 	{
 		var timeline = this.getComponent( 0 );
