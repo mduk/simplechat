@@ -1,16 +1,12 @@
 SimpleChat
 ==========
 
-So far this project is mainly just an exercise for myself in using websockets with Erlang and Cowboy.
-It starts an HTTP listener on port 8080. Requests to all paths will result in the same thing. 
-There is only one handler, the websocket chatroom.
-
-Requests to http://localhost:8080/ are served the client.html file, which contains the chat client html, css and javascript.
-
-Requests to ws://localhost:8080/ will spawn a client process (using simplechat_wshandler) which registers an event handler with the chatroom, an gen_event process. When the socket is closed, the event handler is removed.
+Websocket chatroom with an Erlang back end and ExtJS 4 front end.
+Primarily a learning exercise for me.
 
 Installation and Usage
 ----------------------
+Rebar is required to compile SimpleChat.
 
 	# Compile
 	./rebar get-deps
