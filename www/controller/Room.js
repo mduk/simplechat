@@ -45,6 +45,24 @@ Ext.define( 'SimpleChat.controller.Room', {
 						controller.lockTopic( room.name );
 					}
 				}
+			},
+			'#textInput' : {
+				specialkey: function( textfield, event )
+				{
+					if ( event.getKey() == event.ENTER )
+					{
+						var text = textfield.getValue();
+						
+						if ( text != "" )
+						{
+							controller.say(
+								textfield.up( 'window' ).room.name,
+								text
+							);
+							textfield.setValue( "" );
+						}
+					}
+				}
 			}
 		} );
 	},
@@ -71,6 +89,15 @@ Ext.define( 'SimpleChat.controller.Room', {
 		this.getController( 'Client' ).sendPacket( {
 			type: 'unlock_topic',
 			room: room
+		} );
+	},
+	
+	say: function( room, message )
+	{
+		this.getController( 'Client' ).sendPacket( {
+			type: 'say',
+			room: room,
+			message: message
 		} );
 	},
 	

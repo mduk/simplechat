@@ -198,8 +198,8 @@ parse_message( { unlock_topic, Props } ) ->
 % Parse a 'say' message
 parse_message( { say, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
-    { _, Body } = proplists:lookup( <<"body">>, Props ),
-	{ say, Room, Body };
+    { _, Message } = proplists:lookup( <<"message">>, Props ),
+	{ say, Room, Message };
 % Parse a message from it's decoded json representation
 parse_message( { struct, Props } ) ->
 	Type = case proplists:lookup( <<"type">>, Props ) of
@@ -252,7 +252,7 @@ encode_message( { client_event, { joined, RoomInfo } } ) ->
 	mochijson2:encode( { struct, [
 		{ source, client },
 		{ type, joined },
-		{ room, { struct, RoomInfo } }
+		{ room, encode_message( { room_info, RoomInfo } ) }
 	] } );
 
 % Client parted room
@@ -274,10 +274,17 @@ encode_message( welcome ) ->
 	mochijson2:encode( { struct, [
 		{ <<"type">>, <<"welcome">> }
 	] } );
+% Encode room info
+encode_message( { room_info, RoomInfo } ) ->
+	{ struct, [
+		{ name, proplists:get_value( name, RoomInfo ) },
+		{ topic, proplists:get_value( topic, RoomInfo ) },
+		{ members, proplists:get_value( members, RoomInfo ) }
+	] };
 % Encode an 'active_rooms' message
 encode_message( { active_rooms, Rooms } ) ->
-	RoomStructs = lists:map( fun( RoomProps ) ->
-		{ struct, RoomProps }
+	RoomStructs = lists:map( fun( RoomInfo ) ->
+		encode_message( { room_info, RoomInfo } )
 	end, Rooms ),
 	mochijson2:encode( { struct, [
 		{ <<"type">>, <<"active_rooms">> },

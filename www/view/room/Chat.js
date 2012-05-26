@@ -45,23 +45,9 @@ Ext.define( 'SimpleChat.view.room.Chat', {
 			defaultType: 'textfield',
 			items: [
 				{
+					id: 'textInput',
 					name: 'msg',
-					enableKeyEvents: true,
-					listeners: {
-						specialkey: function( textfield, event )
-						{
-							if ( event.getKey() == event.ENTER )
-							{
-								var text = textfield.getValue();
-								
-								if ( text != "" )
-								{
-									textfield.up( 'window' ).say( text )
-									textfield.setValue( "" );
-								}
-							}
-						}
-					}
+					enableKeyEvents: true
 				}
 			]
 		}
