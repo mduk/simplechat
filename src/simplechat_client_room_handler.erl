@@ -14,7 +14,7 @@ init( { Client, Room, Subscribed } ) ->
 
 % Client is subscribed to everything
 handle_event( Event, State = #state{ client = Client, room = Room, subscribed_events = all } ) ->
-	gen_server:cast( Client, { room_event, Room, Event } ),
+	Client ! { room_event, Room, Event },
 	{ ok, State };
 
 % Client is only subscribed to a subset of event types
@@ -22,7 +22,7 @@ handle_event( Event, State = #state{ subscribed_events = Subscribed } ) ->
 	case lists:member( element( 1, Event ), Subscribed ) of
 		true  -> 
 			#state{ client = Client, room = Room } = State,
-			gen_server:cast( Client, { room_event, Room, Event } );
+			Client ! { room_event, Room, Event };
 		false -> 
 			ok
 	end,

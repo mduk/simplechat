@@ -73,9 +73,7 @@ init( _ ) ->
 %===============================================================================
 
 % A room event, pass it straight on to the client event manager
-handle_cast( Event = { room_event, _, _ }, State ) ->
-	gen_event:notify( State#state.event, Event ),
-	{ noreply, State }.
+handle_cast( _, State ) -> { noreply, State }.
 
 %===============================================================================
 % handle_call/3
@@ -224,6 +222,12 @@ handle_info( { room, { RoomName, RoomPid }, parted }, State ) ->
 	% Remove the room from the state
 	{ noreply, State#state{ rooms = lists:delete( { RoomName, RoomPid }, State#state.rooms ) } };
 
+% Room Event
+handle_info( Event = { room_event, _, _ }, State ) ->
+	gen_event:notify( State#state.event, Event ),
+	{ noreply, State };
+
+% Catch All
 handle_info( _Msg, State ) ->
 	{ noreply, State }.
 
