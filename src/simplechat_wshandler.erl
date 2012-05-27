@@ -282,58 +282,63 @@ when Event =:= topic_changed; Event =:= topic_locked; Event =:= topic_unlocked -
 % ------------------------------------------------------------------------------
 encode_message( { room_event, { Room, _ }, { Motion, _, Client } } ) when Motion =:= joined; Motion =:= parted ->
 	mochijson2:encode( { struct, [
-		{ source">>, room },
+		{ source, room },
 		{ type, atom_to_binary( Motion, utf8 ) },
 		{ room, Room },
 		{ client, Client }
 	] } );
 % ------------------------------------------------------------------------------
-% Client Events
-% ------------------------------------------------------------------------------
-
 % Relayed room event
+% ------------------------------------------------------------------------------
 encode_message( { client_event, Event = { room_event, _, _ } } ) ->
 	encode_message( Event );
-
+% ------------------------------------------------------------------------------
 % Client joined room
+% ------------------------------------------------------------------------------
 encode_message( { client_event, { joined, RoomInfo } } ) ->
 	mochijson2:encode( { struct, [
 		{ source, client },
 		{ type, joined },
 		{ room, encode_message( { room_info, RoomInfo } ) }
 	] } );
-
+% ------------------------------------------------------------------------------
 % Client parted room
+% ------------------------------------------------------------------------------
 encode_message( { client_event, { parted, { RoomName, _ } } } ) ->
 	mochijson2:encode( { struct, [
 		{ source, client },
 		{ type, parted },
 		{ room, RoomName }
 	] } );
-
+% ------------------------------------------------------------------------------
 % Room errors
+% ------------------------------------------------------------------------------
 encode_message( { client_event, { room, { RoomName, _ }, { error, Reason } } } ) ->
 	encode_message( { error, [ "Room Error: ", RoomName, ": ", io_lib:format( "~p", [ Reason ] ) ] } );
-
+% ------------------------------------------------------------------------------
 % Client denied from room
+% ------------------------------------------------------------------------------
 encode_message( { client_event, { denied, { RoomName, _ } } } ) ->
 	encode_message( { error, [ "Access to room \"", RoomName, "\" denied." ] } );
 % ------------------------------------------------------------------------------
-% Misc
-% ------------------------------------------------------------------------------
 % Encode a 'welcome' message
+% ------------------------------------------------------------------------------
 encode_message( welcome ) ->
 	mochijson2:encode( { struct, [
 		{ type, welcome }
 	] } );
+% ------------------------------------------------------------------------------
 % Encode room info
+% ------------------------------------------------------------------------------
 encode_message( { room_info, RoomInfo } ) ->
 	{ struct, [
 		{ name, proplists:get_value( name, RoomInfo ) },
 		{ topic, proplists:get_value( topic, RoomInfo ) },
 		{ members, proplists:get_value( members, RoomInfo ) }
 	] };
+% ------------------------------------------------------------------------------
 % Encode an 'active_rooms' message
+% ------------------------------------------------------------------------------
 encode_message( { active_rooms, Rooms } ) ->
 	RoomStructs = lists:map( fun( RoomInfo ) ->
 		encode_message( { room_info, RoomInfo } )
@@ -342,10 +347,12 @@ encode_message( { active_rooms, Rooms } ) ->
 		{ type, active_rooms },
 		{ rooms, RoomStructs }
 	] } );
+% ------------------------------------------------------------------------------
 % Encode an 'error' message
+% ------------------------------------------------------------------------------
 encode_message( { error, Message } ) ->
 	mochijson2:encode( { struct, [
-		{ type">>, error },
+		{ type, error },
 		{ title, <<"Server Error">> },
 		{ message, list_to_binary( Message ) }
 	] } ). 
