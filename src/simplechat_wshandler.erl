@@ -263,9 +263,13 @@ encode_message( { client_event, { parted, { RoomName, _ } } } ) ->
 		{ <<"room">>, RoomName }
 	] } );
 
+% Room errors
+encode_message( { client_event, { room, { RoomName, _ }, { error, Reason } } } ) ->
+	encode_message( { error, [ "Room Error: ", RoomName, ": ", io_lib:format( "~p", [ Reason ] ) ] } );
+
 % Client denied from room
 encode_message( { client_event, { denied, { RoomName, _ } } } ) ->
-	encode_message( { error, <<"Access to room \"", RoomName/binary, "\" denied.">> } );
+	encode_message( { error, [ "Access to room \"", RoomName, "\" denied." ] } );
 % ------------------------------------------------------------------------------
 % Misc
 % ------------------------------------------------------------------------------

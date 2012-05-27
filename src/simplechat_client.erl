@@ -221,7 +221,15 @@ handle_info( { room, { RoomName, RoomPid }, parted }, State ) ->
 	% Remove the room from the state
 	{ noreply, State#state{ rooms = lists:delete( { RoomName, RoomPid }, State#state.rooms ) } };
 
-% Room Event
+% A room error
+handle_info( Error = { room, _, { error, _ } }, State ) ->
+	
+	% Fire event
+	gen_event:notify( State#state.event, Error ),
+	
+	{ noreply, State };
+
+% All Room Events
 handle_info( Event = { room_event, _, _ }, State ) ->
 	gen_event:notify( State#state.event, Event ),
 	{ noreply, State };
