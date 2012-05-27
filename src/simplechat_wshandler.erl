@@ -218,11 +218,11 @@ parse_message( JsonBin ) ->
 % ------------------------------------------------------------------------------
 encode_message( { room_event, { Room, _ }, { message, { Nick, _ }, Message } } ) ->
 	mochijson2:encode( { struct, [
-		{ <<"source">>, <<"room">> },
-		{ <<"type">>, <<"message">> },
-		{ <<"room">>, Room },
-		{ <<"client">>, Nick },
-		{ <<"body">>, Message }
+		{ source, room },
+		{ type, message },
+		{ room, Room },
+		{ client, Nick },
+		{ body, Message }
 	] } );
 encode_message( { room_event, { Room, _ }, { Event, Topic } } ) 
 when Event =:= topic_changed; Event =:= topic_locked; Event =:= topic_unlocked ->
@@ -234,10 +234,10 @@ when Event =:= topic_changed; Event =:= topic_locked; Event =:= topic_unlocked -
 	] } );
 encode_message( { room_event, { Room, _ }, { Motion, _, Client } } ) when Motion =:= joined; Motion =:= parted ->
 	mochijson2:encode( { struct, [
-		{ <<"source">>, <<"room">> },
-		{ <<"type">>, atom_to_binary( Motion, utf8 ) },
-		{ <<"room">>, Room },
-		{ <<"client">>, Client }
+		{ source">>, room },
+		{ type, atom_to_binary( Motion, utf8 ) },
+		{ room, Room },
+		{ client, Client }
 	] } );
 % ------------------------------------------------------------------------------
 % Client Events
@@ -258,9 +258,9 @@ encode_message( { client_event, { joined, RoomInfo } } ) ->
 % Client parted room
 encode_message( { client_event, { parted, { RoomName, _ } } } ) ->
 	mochijson2:encode( { struct, [
-		{ <<"source">>, <<"client">> },
-		{ <<"type">>, parted },
-		{ <<"room">>, RoomName }
+		{ source, client },
+		{ type, parted },
+		{ room, RoomName }
 	] } );
 
 % Room errors
@@ -276,7 +276,7 @@ encode_message( { client_event, { denied, { RoomName, _ } } } ) ->
 % Encode a 'welcome' message
 encode_message( welcome ) ->
 	mochijson2:encode( { struct, [
-		{ <<"type">>, <<"welcome">> }
+		{ type, welcome }
 	] } );
 % Encode room info
 encode_message( { room_info, RoomInfo } ) ->
@@ -291,14 +291,14 @@ encode_message( { active_rooms, Rooms } ) ->
 		encode_message( { room_info, RoomInfo } )
 	end, Rooms ),
 	mochijson2:encode( { struct, [
-		{ <<"type">>, <<"active_rooms">> },
-		{ <<"rooms">>, RoomStructs }
+		{ type, active_rooms },
+		{ rooms, RoomStructs }
 	] } );
 % Encode an 'error' message
 encode_message( { error, Message } ) ->
 	mochijson2:encode( { struct, [
-		{ <<"type">>, <<"error">> },
-		{ <<"title">>, <<"Server Error">> },
-		{ <<"message">>, list_to_binary( Message ) }
+		{ type">>, error },
+		{ title, <<"Server Error">> },
+		{ message, list_to_binary( Message ) }
 	] } ). 
 
