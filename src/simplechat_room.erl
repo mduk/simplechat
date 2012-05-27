@@ -30,11 +30,11 @@ topic( Room ) ->
 	gen_server:call( Room, topic ).
 
 topic( Room, Topic ) when is_binary( Topic ) ->
-	gen_server:call( Room, { set_topic, Topic } );
+	gen_server:cast( Room, { set_topic, self(), Topic } );
 topic( Room, lock ) ->
-	gen_server:call( Room, { lock_topic, self() } );
+	gen_server:cast( Room, { lock_topic, self() } );
 topic( Room, unlock ) ->
-	gen_server:call( Room, { unlock_topic, self() } ).
+	gen_server:cast( Room, { unlock_topic, self() } ).
 	
 info( Room ) ->
 	gen_server:call( Room, info ).
@@ -56,41 +56,6 @@ handle_call( info, _, State ) ->
 % Get topic
 handle_call( topic, _, State = #state{ topic = { _, Topic } } ) ->
 	{ reply, Topic, State };
-
-% Set topic when open
-handle_call( { set_topic, Topic }, _, State = #state{ topic = { open, _ } } ) ->
-	fire( State, { topic_changed, Topic } ),
-	{ reply, ok, State#state{ topic = { open, Topic } } };
-
-% Set topic when locked
-handle_call( { set_topic, _ }, _, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
-	{ reply, { error, { topic_locked, KeyHolder } }, State };
-
-% Lock topic when open
-handle_call( { lock_topic, KeyHolder }, _, State = #state{ topic = { open, Topic } } ) ->
-	fire( State, { topic_locked, Topic } ),
-	{ reply, ok, State#state{ topic = { { locked, KeyHolder }, Topic } } };
-
-% Lock topic when locked by caller
-handle_call( { lock_topic, KeyHolder }, _, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
-	{ reply, ok, State };
-
-% Lock topic when locked
-handle_call( { lock_topic, _ }, _, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
-	{ reply, { error, { topic_locked, KeyHolder } }, State };
-
-% Unlock topic when open
-handle_call( { unlock_topic, _ }, _, State = #state{ topic = { open, _ } } ) ->
-	{ reply, ok, State };
-
-% Unlock topic when locked by caller
-handle_call( { unlock_topic, KeyHolder }, _, State = #state{ topic = { { locked, KeyHolder }, Topic } } ) ->
-	fire( State, { topic_unlocked, Topic } ),
-	{ reply, ok, State#state{ topic = { open, Topic } } };
-
-% Unlock topic when locked
-handle_call( { unlock_topic, _ }, _, State = #state{ topic = { { locked, _ }, _ } } ) ->
-	{ reply, { error, denied }, State };
 	
 % Catch all
 handle_call( _Msg, _From, State ) ->
@@ -165,6 +130,66 @@ handle_cast( { say, ClientPid, Message }, State ) ->
 			fire( State, { message, { Nick, ClientPid }, Message } )
 	end,	
 	{ noreply, State };
+
+% Set topic when open
+handle_cast( { set_topic, _, Topic }, State = #state{ topic = { open, _ } } ) ->
+	
+	% Fire the topic_changed event
+	fire( State, { topic_changed, Topic } ),
+	
+	{ noreply, State#state{ topic = { open, Topic } } };
+
+% Set topic when locked
+handle_cast( { set_topic, ClientPid, _ }, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
+	
+	% Tell the client the topic is locked
+	ClientPid ! { room, { State#state.name, self() }, { error, { topic_locked, KeyHolder } } },
+	
+	{ noreply, State };
+
+% Lock topic when open
+handle_cast( { lock_topic, KeyHolder }, State = #state{ topic = { open, Topic } } ) ->
+
+	% Monitor the client process, if it dies, the topic lock should be released
+
+	% Fire the topic_locked event
+	fire( State, { topic_locked, Topic } ),
+	
+	{ noreply, State#state{ topic = { { locked, KeyHolder }, Topic } } };
+
+% Lock topic when locked by caller
+handle_cast( { lock_topic, KeyHolder }, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
+	{ noreply, State };
+
+% Lock topic when locked
+handle_cast( { lock_topic, ClientPid }, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
+
+	% Tell the client the topic is already locked
+	ClientPid ! { room, { State#state.name, self() }, { error, { topic_locked, KeyHolder } } },
+	
+	{ noreply, State };
+
+% Unlock topic when open
+handle_cast( { unlock_topic, _ }, State = #state{ topic = { open, _ } } ) ->
+	{ noreply, State };
+
+% Unlock topic when locked by caller
+handle_cast( { unlock_topic, KeyHolder }, State = #state{ topic = { { locked, KeyHolder }, Topic } } ) ->
+	
+	% Fire the topic_unlocked event
+	fire( State, { topic_unlocked, Topic } ),
+	
+	{ noreply, State#state{ topic = { open, Topic } } };
+
+% Unlock topic when locked
+handle_cast( { unlock_topic, ClientPid }, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
+
+	% Tell the client that it doesn't have permission
+	ClientPid ! { room, { State#state.name, self() }, { error, { topic_locked, KeyHolder } } },
+	
+	{ noreply, State };
+
+% Catch All
 handle_cast( _Msg, State ) ->
 	{ noreply, State }.
 
