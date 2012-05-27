@@ -106,7 +106,7 @@ handle_cast( { join, ClientPid, Nick }, State ) ->
 		granted ->
 			
 			% Add client-room handler
-			Args = { ClientPid, { State#state.name, self() } },
+			Args = { ClientPid, { State#state.name, self() }, all },
 			gen_event:add_handler( State#state.event, simplechat_client_room_handler, Args ),
 			
 			% Fire joined event
@@ -142,7 +142,8 @@ handle_cast( { part, ClientPid }, State ) ->
 				fire( State, { parted, State#state.name, Member#member.nick } ),
 				
 				% Delete client-room handler
-				gen_event:delete_handler( State#state.event, simplechat_client_room_handler, ClientPid ),
+				Args = { ClientPid, { State#state.name, self() }, all },
+				gen_event:delete_handler( State#state.event, simplechat_client_room_handler, Args ),
 				
 				% Notify the client that it has parted the room
 				ClientPid ! { room, { State#state.name, self() }, parted },
