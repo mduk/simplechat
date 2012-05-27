@@ -72,7 +72,6 @@ init( _ ) ->
 % handle_cast/2
 %===============================================================================
 
-% A room event, pass it straight on to the client event manager
 handle_cast( _, State ) -> { noreply, State }.
 
 %===============================================================================
