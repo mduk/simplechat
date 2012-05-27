@@ -11,10 +11,11 @@ init( Pid ) ->
     	wshandler = Pid
     } }.
 
-% Relay all events straight to the Websocket handler process
+% Relay room event as-is
 handle_event( Event = { room_event, _ }, S = #state{ wshandler = Pid } ) ->
 	Pid ! Event,
 	{ ok, S };
+% Wrap client events and send to pid
 handle_event( Event, S = #state{ wshandler = Pid } ) ->
 	Pid ! { client_event, Event },
 	{ ok, S }.
