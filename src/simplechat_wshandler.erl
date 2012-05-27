@@ -134,87 +134,129 @@ websocket_handle( { text, Msg }, Req, State ) ->
 websocket_handle( _, Req, S ) ->
 	{ ok, Req, S }.
 
-% Client Events
+%===============================================================================
+% websocket_info/3
+%===============================================================================
+% Encode and send a client event
+%-------------------------------------------------------------------------------
 websocket_info( Msg = { client_event, _ }, Req, State ) ->
 	{ reply, { text, encode_message( Msg ) }, Req, State, hibernate };
-% Room Events
+%-------------------------------------------------------------------------------
+% Encode and send a room event
+%-------------------------------------------------------------------------------
 websocket_info( Msg = { room_event, _, _ }, Req, State ) ->
 	{ reply, { text, encode_message( Msg ) }, Req, State, hibernate };
-% Send raw data down the websocket
+%-------------------------------------------------------------------------------
+% Send data down the websocket
+%-------------------------------------------------------------------------------
 websocket_info( { send, Data }, Req, State ) when is_binary( Data ) ->
 	{ reply, { text, Data }, Req, State, hibernate };
+%-------------------------------------------------------------------------------
 % Encode and send a message down the websocket
+%-------------------------------------------------------------------------------
 websocket_info( { send, Message }, Req, State ) when is_tuple( Message ) ->
 	{ reply, { text, encode_message( Message ) }, Req, State, hibernate };
+%-------------------------------------------------------------------------------
 % Close the socket
+%-------------------------------------------------------------------------------
 websocket_info( close, Req, State ) ->
 	{ shutdown, Req, State };
+%-------------------------------------------------------------------------------
 % Catch all messages
+%-------------------------------------------------------------------------------
 websocket_info( Msg, Req, State ) ->
 	io:format( "Wshandler Unknown info: ~p~n", [ Msg ] ),
 	{ ok, Req, State, hibernate }.
 
+%===============================================================================
+% websocket_terminate/3
+%===============================================================================
 % Connection closed
+%-------------------------------------------------------------------------------
 websocket_terminate( _Reason, _Req, #state{ client_pid = ClientPid } ) ->
 	% Tell The client process to quit
 	simplechat_client:quit( ClientPid ),
 	ok.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Private functions
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%===============================================================================
+% parse_message/1
+%===============================================================================
 % Parse an 'ident' message
+%-------------------------------------------------------------------------------
 parse_message( { ident, Props } ) ->
 	{ _, Name } = proplists:lookup( <<"name">>, Props ),
 	{ ident, Name };
+%-------------------------------------------------------------------------------
 % Parse a 'active_rooms' message
+%-------------------------------------------------------------------------------
 parse_message( { active_rooms, _ } ) ->
 	active_rooms;
+%-------------------------------------------------------------------------------
 % Parse a 'quit' message
+%-------------------------------------------------------------------------------
 parse_message( { quit, _ } ) ->
 	quit;
+%-------------------------------------------------------------------------------
 % Parse a 'join' message
+%-------------------------------------------------------------------------------
 parse_message( { join, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
 	{ join, Room };
+%-------------------------------------------------------------------------------
 % Parse a 'part' mssage
+%-------------------------------------------------------------------------------
 parse_message( { part, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
 	{ part, Room };
+%-------------------------------------------------------------------------------
 % Parse a 'set_topic' message
+%-------------------------------------------------------------------------------
 parse_message( { set_topic, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
 	{ _, Topic } = proplists:lookup( <<"topic">>, Props ),
 	{ set_topic, Room, Topic };
+%-------------------------------------------------------------------------------
 % Parse a 'lock_topic' message
+%-------------------------------------------------------------------------------
 parse_message( { lock_topic, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
 	{ lock_topic, Room };
+%-------------------------------------------------------------------------------
 % Parse a 'unlock_topic' message
+%-------------------------------------------------------------------------------
 parse_message( { unlock_topic, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
 	{ unlock_topic, Room };
+%-------------------------------------------------------------------------------
 % Parse a 'say' message
+%-------------------------------------------------------------------------------
 parse_message( { say, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
     { _, Message } = proplists:lookup( <<"message">>, Props ),
 	{ say, Room, Message };
+%-------------------------------------------------------------------------------
 % Parse a message from it's decoded json representation
+%-------------------------------------------------------------------------------
 parse_message( { struct, Props } ) ->
 	Type = case proplists:lookup( <<"type">>, Props ) of
 		none -> throw( json_lacks_type );
 		{ _, TypeBin } -> binary_to_atom( TypeBin, utf8 )
 	end,
 	parse_message( { Type, Props } );
+%-------------------------------------------------------------------------------
 % Parse json payload
+%-------------------------------------------------------------------------------
 parse_message( JsonBin ) ->
         parse_message( mochijson2:decode( JsonBin ) ).
 
 % ==============================================================================
 % encode_message/1
 % ==============================================================================
-% Room Events
+% Encode a room message
 % ------------------------------------------------------------------------------
 encode_message( { room_event, { Room, _ }, { message, { Nick, _ }, Message } } ) ->
 	mochijson2:encode( { struct, [
@@ -224,6 +266,9 @@ encode_message( { room_event, { Room, _ }, { message, { Nick, _ }, Message } } )
 		{ client, Nick },
 		{ body, Message }
 	] } );
+% ------------------------------------------------------------------------------
+% Encode a room topic_changed/topic_locked/topic_unlocked event
+% ------------------------------------------------------------------------------
 encode_message( { room_event, { Room, _ }, { Event, Topic } } ) 
 when Event =:= topic_changed; Event =:= topic_locked; Event =:= topic_unlocked ->
 	mochijson2:encode( { struct, [
@@ -232,6 +277,9 @@ when Event =:= topic_changed; Event =:= topic_locked; Event =:= topic_unlocked -
 		{ type, Event },
 		{ topic, Topic }
 	] } );
+% ------------------------------------------------------------------------------
+% Encode a room joined/parted event
+% ------------------------------------------------------------------------------
 encode_message( { room_event, { Room, _ }, { Motion, _, Client } } ) when Motion =:= joined; Motion =:= parted ->
 	mochijson2:encode( { struct, [
 		{ source">>, room },
