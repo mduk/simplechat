@@ -3,7 +3,7 @@
 -behaviour( gen_server ).
 -export( [ init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3 ] ).
 
--export( [ start_link/1, info/1, join/2, part/1, say/2, topic/1, topic/2 ] ).
+-export( [ start_link/1, info/1, join/2, part/1, say/2, topic/1, topic/2, member_list/1, watch/1 ] ).
 
 -record( state, { 
 	name, 
@@ -35,9 +35,15 @@ topic( Room, lock ) ->
 	gen_server:cast( Room, { lock_topic, self() } );
 topic( Room, unlock ) ->
 	gen_server:cast( Room, { unlock_topic, self() } ).
+
+member_list( Room ) ->
+	gen_server:call( Room, member_list ).
 	
 info( Room ) ->
 	gen_server:call( Room, info ).
+
+watch( Room ) ->
+	gen_server:cast( Room, { watch, self() } ).
 
 % Behaviour: gen_server
 
@@ -56,11 +62,28 @@ handle_call( info, _, State ) ->
 % Get topic
 handle_call( topic, _, State = #state{ topic = { _, Topic } } ) ->
 	{ reply, Topic, State };
+
+% Get member list
+handle_call( member_list, _, State = #state{ clients = Members } ) ->
+	{ reply, lists:map( fun( #member{ nick = Nick, pid = Pid } ) ->
+		{ Nick, Pid }
+	end, Members), State };
 	
 % Catch all
 handle_call( _Msg, _From, State ) ->
 	{ reply, unknown_call, State }.
 
+% Client requests to watch room
+handle_cast( { watch, ClientPid }, State ) ->
+	
+	Args = { ClientPid, { State#state.name, self() }, [
+		topic_changed,
+		joined,
+		parted
+	] },
+	gen_event:add_handler( State#state.event, simplechat_client_room_handler, Args ),
+	
+	{ noreply, State };
 
 % Client requests to join room
 handle_cast( { join, ClientPid, Nick }, State ) ->
