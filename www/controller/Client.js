@@ -332,6 +332,10 @@ Ext.define( 'SimpleChat.controller.Client', {
 					.roomWindow( { name: event.room } )
 					.hide( this.roomListWindow() );
 				break;
+				
+			case "room_info":
+				Ext.getCmp( 'room-list' ).updateRoom( event.room );
+				break;
 			
 			default:
 				console.log( 'Unknown client event!' );

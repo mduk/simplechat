@@ -256,7 +256,7 @@ parse_message( JsonBin ) ->
 % ==============================================================================
 % encode_message/1
 % ==============================================================================
-% Encode a room message
+% Room Event: message
 % ------------------------------------------------------------------------------
 encode_message( { room_event, { Room, _ }, { message, { Nick, _ }, Message } } ) ->
 	mochijson2:encode( { struct, [
@@ -267,7 +267,7 @@ encode_message( { room_event, { Room, _ }, { message, { Nick, _ }, Message } } )
 		{ body, Message }
 	] } );
 % ------------------------------------------------------------------------------
-% Encode a room topic_changed/topic_locked/topic_unlocked event
+% Room Event: topic_changed/topic_locked/topic_unlocked event
 % ------------------------------------------------------------------------------
 encode_message( { room_event, { Room, _ }, { Event, Topic } } ) 
 when Event =:= topic_changed; Event =:= topic_locked; Event =:= topic_unlocked ->
@@ -278,7 +278,7 @@ when Event =:= topic_changed; Event =:= topic_locked; Event =:= topic_unlocked -
 		{ topic, Topic }
 	] } );
 % ------------------------------------------------------------------------------
-% Encode a room joined/parted event
+% Room Event: joined/parted
 % ------------------------------------------------------------------------------
 encode_message( { room_event, { Room, _ }, { Motion, _, Client } } ) when Motion =:= joined; Motion =:= parted ->
 	mochijson2:encode( { struct, [
@@ -288,12 +288,13 @@ encode_message( { room_event, { Room, _ }, { Motion, _, Client } } ) when Motion
 		{ client, Client }
 	] } );
 % ------------------------------------------------------------------------------
-% Relayed room event
+% Relayed room event --- Deprecated?
 % ------------------------------------------------------------------------------
 encode_message( { client_event, Event = { room_event, _, _ } } ) ->
+	io:format( "Room Event wrapped in a client event~n" ),
 	encode_message( Event );
 % ------------------------------------------------------------------------------
-% Client joined room
+% Client Event: joined
 % ------------------------------------------------------------------------------
 encode_message( { client_event, { joined, RoomInfo } } ) ->
 	mochijson2:encode( { struct, [
@@ -302,7 +303,7 @@ encode_message( { client_event, { joined, RoomInfo } } ) ->
 		{ room, encode_message( { room_info, RoomInfo } ) }
 	] } );
 % ------------------------------------------------------------------------------
-% Client parted room
+% Client Event: Parted
 % ------------------------------------------------------------------------------
 encode_message( { client_event, { parted, { RoomName, _ } } } ) ->
 	mochijson2:encode( { struct, [
@@ -311,12 +312,21 @@ encode_message( { client_event, { parted, { RoomName, _ } } } ) ->
 		{ room, RoomName }
 	] } );
 % ------------------------------------------------------------------------------
-% Room errors
+% Client Event: room_info
+% ------------------------------------------------------------------------------
+encode_message( { client_event, { room_info, RoomInfo } } ) ->
+	mochijson2:encode( { struct, [
+		{ source, client },
+		{ type, room_info },
+		{ room, encode_message( { room_info, RoomInfo } ) }
+	] } );
+% ------------------------------------------------------------------------------
+% Client Event: room error
 % ------------------------------------------------------------------------------
 encode_message( { client_event, { room, { RoomName, _ }, { error, Reason } } } ) ->
 	encode_message( { error, [ "Room Error: ", RoomName, ": ", io_lib:format( "~p", [ Reason ] ) ] } );
 % ------------------------------------------------------------------------------
-% Client denied from room
+% Client Event: room denied
 % ------------------------------------------------------------------------------
 encode_message( { client_event, { denied, { RoomName, _ } } } ) ->
 	encode_message( { error, [ "Access to room \"", RoomName, "\" denied." ] } );

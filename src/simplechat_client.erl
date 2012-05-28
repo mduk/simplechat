@@ -40,7 +40,7 @@ nick( Client ) ->
 
 nick( Client, Nick ) ->
 	gen_server:call( Client, { nick, Nick } ).
-	
+
 active_rooms( Client ) ->
 	gen_server:call( Client, active_rooms ).
 
@@ -101,10 +101,10 @@ handle_call( nick, _From, State = #state{ nick=Nick } ) ->
 	{ reply, { ok, Nick }, State };
 % Active rooms (equiv to irc /list, all server rooms)
 handle_call( active_rooms, _From, State ) ->
-	Rooms = lists:map( fun( { _Name, Pid } ) ->
-		simplechat_room:info( Pid )
+	lists:foreach( fun( { _, Room } ) ->
+		simplechat_room:info( Room )
 	end, simplechat_room_sup:rooms() ),
-	{ reply, { ok, { active_rooms, Rooms } }, State };
+	{ reply, pending, State };
 % List of rooms the client has joined
 handle_call( joined_rooms, _From, State = #state{ rooms = Rooms } ) ->
 	{ reply, { ok, { joined_rooms, Rooms } }, State };
@@ -220,6 +220,14 @@ handle_info( { room, { RoomName, RoomPid }, parted }, State ) ->
 	
 	% Remove the room from the state
 	{ noreply, State#state{ rooms = lists:delete( { RoomName, RoomPid }, State#state.rooms ) } };
+
+% Room info
+handle_info( { room, _, info, RoomInfo }, State ) ->
+	
+	% Fire event
+	gen_event:notify( State#state.event, { room_info, RoomInfo } ),
+	
+	{ noreply, State };
 
 % A room error
 handle_info( Error = { room, _, { error, _ } }, State ) ->

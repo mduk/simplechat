@@ -3,9 +3,20 @@
 -behaviour( gen_server ).
 -export( [ init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3 ] ).
 
--export( [ start_link/1, info/1, join/2, part/1, say/2, topic/1, topic/2, member_list/1, watch/1 ] ).
+-export( [
+	start_link/1, 
+	info/1, 
+	join/2, 
+	part/1, 
+	say/2, 
+	topic/1, 
+	topic/2, 
+	member_list/1,
+	watch/1 
+] ).
 
 -record( state, { 
+	pid,
 	name, 
 	event, 
 	clients = [], 
@@ -38,9 +49,9 @@ topic( Room, unlock ) ->
 
 member_list( Room ) ->
 	gen_server:call( Room, member_list ).
-	
+
 info( Room ) ->
-	gen_server:call( Room, info ).
+	gen_server:cast( Room, { info, self() } ).
 
 watch( Room ) ->
 	gen_server:cast( Room, { watch, self() } ).
@@ -56,6 +67,7 @@ init( { Name } ) ->
 	{ ok, Pid } = gen_event:start_link(),
 	gen_event:add_handler( Pid, simplechat_echohandler, io_lib:format( "Room (~s) Event", [ Name ] ) ),
 	{ ok, #state{ 
+		pid = self(),
 		name = Name,
 		event = Pid 
 	} }.
@@ -80,7 +92,7 @@ handle_call( topic, _, State = #state{ topic = { _, Topic } } ) ->
 handle_call( member_list, _, State = #state{ clients = Members } ) ->
 	{ reply, lists:map( fun( #member{ nick = Nick, pid = Pid } ) ->
 		{ Nick, Pid }
-	end, Members), State };
+	end, Members ), State };
 	
 %-------------------------------------------------------------------------------
 % Catch all
@@ -102,6 +114,10 @@ handle_cast( { watch, ClientPid }, State ) ->
 	] },
 	gen_event:add_handler( State#state.event, simplechat_client_room_handler, Args ),
 	
+	{ noreply, State };
+
+handle_cast( { info, ClientPid }, State ) -> 
+	ClientPid ! { room, { State#state.name, State#state.pid }, info, gather_room_info( State ) },
 	{ noreply, State };
 
 %-------------------------------------------------------------------------------
