@@ -45,8 +45,13 @@ info( Room ) ->
 watch( Room ) ->
 	gen_server:cast( Room, { watch, self() } ).
 
-% Behaviour: gen_server
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% gen_server functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%===============================================================================
+% init/1
+%===============================================================================
 init( { Name } ) ->
 	{ ok, Pid } = gen_event:start_link(),
 	gen_event:add_handler( Pid, simplechat_echohandler, io_lib:format( "Room (~s) Event", [ Name ] ) ),
@@ -55,25 +60,39 @@ init( { Name } ) ->
 		event = Pid 
 	} }.
 
+%===============================================================================
+% handle_call/3
+%===============================================================================
 % Get room info
+%-------------------------------------------------------------------------------
 handle_call( info, _, State ) ->
 	{ reply, gather_room_info( State ), State };
 
+%-------------------------------------------------------------------------------
 % Get topic
+%-------------------------------------------------------------------------------
 handle_call( topic, _, State = #state{ topic = { _, Topic } } ) ->
 	{ reply, Topic, State };
 
+%-------------------------------------------------------------------------------
 % Get member list
+%-------------------------------------------------------------------------------
 handle_call( member_list, _, State = #state{ clients = Members } ) ->
 	{ reply, lists:map( fun( #member{ nick = Nick, pid = Pid } ) ->
 		{ Nick, Pid }
 	end, Members), State };
 	
+%-------------------------------------------------------------------------------
 % Catch all
+%-------------------------------------------------------------------------------
 handle_call( _Msg, _From, State ) ->
 	{ reply, unknown_call, State }.
 
+%===============================================================================
+% handle_cast/2
+%===============================================================================
 % Client requests to watch room
+%-------------------------------------------------------------------------------
 handle_cast( { watch, ClientPid }, State ) ->
 	
 	Args = { ClientPid, { State#state.name, self() }, [
@@ -85,7 +104,9 @@ handle_cast( { watch, ClientPid }, State ) ->
 	
 	{ noreply, State };
 
+%-------------------------------------------------------------------------------
 % Client requests to join room
+%-------------------------------------------------------------------------------
 handle_cast( { join, ClientPid, Nick }, State ) ->
 	
 	% Check to see if the client is allowed in the room
@@ -116,7 +137,10 @@ handle_cast( { join, ClientPid, Nick }, State ) ->
 	end,
 	
 	{ noreply, NewState };
+
+%-------------------------------------------------------------------------------
 % Client requests to part room
+%-------------------------------------------------------------------------------
 handle_cast( { part, ClientPid }, State ) ->
 		NewState = case client_present( State, ClientPid ) of
 			
@@ -144,7 +168,10 @@ handle_cast( { part, ClientPid }, State ) ->
 			end,
 				
 	{ noreply, NewState };
+
+%-------------------------------------------------------------------------------
 % Client says something to the room
+%-------------------------------------------------------------------------------
 handle_cast( { say, ClientPid, Message }, State ) ->
 	case client_present( State, ClientPid ) of
 		false -> 
@@ -154,7 +181,9 @@ handle_cast( { say, ClientPid, Message }, State ) ->
 	end,	
 	{ noreply, State };
 
+%-------------------------------------------------------------------------------
 % Set topic when open
+%-------------------------------------------------------------------------------
 handle_cast( { set_topic, _, Topic }, State = #state{ topic = { open, _ } } ) ->
 	
 	% Fire the topic_changed event
@@ -162,7 +191,9 @@ handle_cast( { set_topic, _, Topic }, State = #state{ topic = { open, _ } } ) ->
 	
 	{ noreply, State#state{ topic = { open, Topic } } };
 
+%-------------------------------------------------------------------------------
 % Set topic when locked
+%-------------------------------------------------------------------------------
 handle_cast( { set_topic, ClientPid, _ }, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
 	
 	% Tell the client the topic is locked
@@ -170,7 +201,9 @@ handle_cast( { set_topic, ClientPid, _ }, State = #state{ topic = { { locked, Ke
 	
 	{ noreply, State };
 
+%-------------------------------------------------------------------------------
 % Lock topic when open
+%-------------------------------------------------------------------------------
 handle_cast( { lock_topic, KeyHolder }, State = #state{ topic = { open, Topic } } ) ->
 
 	% Monitor the client process, if it dies, the topic lock should be released
@@ -180,11 +213,15 @@ handle_cast( { lock_topic, KeyHolder }, State = #state{ topic = { open, Topic } 
 	
 	{ noreply, State#state{ topic = { { locked, KeyHolder }, Topic } } };
 
+%-------------------------------------------------------------------------------
 % Lock topic when locked by caller
+%-------------------------------------------------------------------------------
 handle_cast( { lock_topic, KeyHolder }, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
 	{ noreply, State };
 
+%-------------------------------------------------------------------------------
 % Lock topic when locked
+%-------------------------------------------------------------------------------
 handle_cast( { lock_topic, ClientPid }, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
 
 	% Tell the client the topic is already locked
@@ -192,11 +229,15 @@ handle_cast( { lock_topic, ClientPid }, State = #state{ topic = { { locked, KeyH
 	
 	{ noreply, State };
 
+%-------------------------------------------------------------------------------
 % Unlock topic when open
+%-------------------------------------------------------------------------------
 handle_cast( { unlock_topic, _ }, State = #state{ topic = { open, _ } } ) ->
 	{ noreply, State };
 
+%-------------------------------------------------------------------------------
 % Unlock topic when locked by caller
+%-------------------------------------------------------------------------------
 handle_cast( { unlock_topic, KeyHolder }, State = #state{ topic = { { locked, KeyHolder }, Topic } } ) ->
 	
 	% Fire the topic_unlocked event
@@ -204,7 +245,9 @@ handle_cast( { unlock_topic, KeyHolder }, State = #state{ topic = { { locked, Ke
 	
 	{ noreply, State#state{ topic = { open, Topic } } };
 
+%-------------------------------------------------------------------------------
 % Unlock topic when locked
+%-------------------------------------------------------------------------------
 handle_cast( { unlock_topic, ClientPid }, State = #state{ topic = { { locked, KeyHolder }, _ } } ) ->
 
 	% Tell the client that it doesn't have permission
@@ -212,21 +255,37 @@ handle_cast( { unlock_topic, ClientPid }, State = #state{ topic = { { locked, Ke
 	
 	{ noreply, State };
 
+%-------------------------------------------------------------------------------
 % Catch All
+%-------------------------------------------------------------------------------
 handle_cast( _Msg, State ) ->
 	{ noreply, State }.
 
+%===============================================================================
+% handle_info/2
+%===============================================================================
 handle_info( _Msg, State ) ->
 	{ noreply, State }.
 
+%===============================================================================
+% terminate/2
+%===============================================================================
 terminate( _Reason, _State ) ->
 	ok.
 
+%===============================================================================
+% code_change/3
+%===============================================================================
 code_change( _OldVsn, _State, _Extra ) ->
 	ok.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Private functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%===============================================================================
+% gather_room_info/1
+%===============================================================================
 gather_room_info( #state{ name = Name, clients = Clients, topic = { _, Topic } } ) -> 
 	[
 		{ pid, self() },
@@ -235,9 +294,11 @@ gather_room_info( #state{ name = Name, clients = Clients, topic = { _, Topic } }
 		{ topic, Topic }
 	].
 
+%===============================================================================
 % fire/2
 %
 % Fires an event, or list of events to the room event manager
+%===============================================================================
 fire( State, Event ) when is_tuple( Event ) ->
 	gen_event:notify( State#state.event, Event );
 fire( State, [ Event | Events ] ) ->
@@ -246,13 +307,17 @@ fire( State, [ Event | Events ] ) ->
 fire( _, [] ) ->
 	ok.
 
+%===============================================================================
 % client_allowed/2
 % 
 % Everyone is alowed!
+%===============================================================================
 client_allowed( _State, _ClientPid ) -> granted.
 
+%===============================================================================
 % client_present/2
 %
 % Determine whether or not a client is present in the room
+%===============================================================================
 client_present( State, Pid ) ->
 	lists:keyfind( Pid, #member.pid, State#state.clients ).
