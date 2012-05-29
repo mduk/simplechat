@@ -83,7 +83,7 @@ Ext.define( 'SimpleChat.controller.Client', {
 			btn.setIconCls( 'icon-disconnect' );
 			
 			var createRoomBtn = btn.nextSibling();
-			createRoomBtn.setDisabled( false )
+			createRoomBtn.setDisabled( false );
 			
 			var refreshListBtn = createRoomBtn.nextSibling();
 			refreshListBtn.setDisabled( false );
