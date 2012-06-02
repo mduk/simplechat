@@ -301,6 +301,10 @@ Ext.define( 'SimpleChat.controller.Client', {
 	{
 		switch ( event.source )
 		{
+			case 'server':
+				this.handleServerEvent( event );
+				break;
+				
 			case 'client':
 				this.handleClientEvent( event );
 				break;
@@ -312,6 +316,21 @@ Ext.define( 'SimpleChat.controller.Client', {
 			
 			default:
 				console.log( 'Unknown event type!' );
+				console.log( event );
+				break;
+		}
+	},
+	
+	handleServerEvent: function( event )
+	{
+		switch ( event.type )
+		{
+			case 'room_opened':
+				Ext.getCmp( 'room-list' ).updateRoom( event.room );
+				break;
+			
+			default:
+				console.log( 'Unknown server event!' );
 				console.log( event );
 				break;
 		}
