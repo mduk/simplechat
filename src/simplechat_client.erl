@@ -61,8 +61,17 @@ quit( Client ) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 init( _ ) ->
-	{ ok, EventPid } = gen_event:start_link(),
+	{ ok, EventPid } = gen_event:start_link(), 
+	
+	% Add a handler for server level events - this needs to be moved so the
+	% client can choose when to be subscribed and to what events. eg, when the
+	% server room list is visible, you would want to hear about changes in room
+	% state and when a room was opened or closed. 
+	gen_event:add_handler( simplechat_sup:event(), simplechat_handler, self() ),
+	
+	% Add a handler just to output events to the shell, for debugging
 	gen_event:add_handler( EventPid, simplechat_echohandler, "Client Event" ),
+	
 	{ ok, #state{
 		pid = self(),
 		event = EventPid
@@ -196,50 +205,39 @@ handle_call( _Msg, _From, State ) ->
 % handle_info/2
 %===============================================================================
 
+% A room has been created
+handle_info( E = { server_event, _ }, State ) ->
+	fire( State, E ),
+	{ noreply, State };
+
 % A room has accepted the client's join request
 handle_info( { room, { RoomName, RoomPid }, joined, RoomInfo }, State ) ->
-	
-	% Fire event
-	gen_event:notify( State#state.event, { joined, RoomInfo } ),
-	
-	% Return join result and update state
+	fire( State, { joined, RoomInfo } ),
 	{ noreply, State#state{ rooms = [ { RoomName, RoomPid } | State#state.rooms ] } };
 
 % A room has denied the client's join request
 handle_info( { room, { RoomName, RoomPid }, denied }, State ) ->
-
-	gen_event:notify( State#state.event, { denied, { RoomName, RoomPid } } ),
-	
+	fire( State, { denied, { RoomName, RoomPid } } ),
 	{ noreply, State };
 
 % A room has been parted
 handle_info( { room, { RoomName, RoomPid }, parted }, State ) ->
-	
-	% Fire event
-	gen_event:notify( State#state.event, { parted, { RoomName, RoomPid } } ),
-	
-	% Remove the room from the state
+	fire( State, { parted, { RoomName, RoomPid } } ),
 	{ noreply, State#state{ rooms = lists:delete( { RoomName, RoomPid }, State#state.rooms ) } };
 
 % Room info
 handle_info( { room, _, info, RoomInfo }, State ) ->
-	
-	% Fire event
-	gen_event:notify( State#state.event, { room_info, RoomInfo } ),
-	
+	fire( State, { room_info, RoomInfo } ),
 	{ noreply, State };
 
 % A room error
 handle_info( Error = { room, _, { error, _ } }, State ) ->
-	
-	% Fire event
-	gen_event:notify( State#state.event, Error ),
-	
+	fire( State, Error ),
 	{ noreply, State };
 
 % All Room Events
 handle_info( Event = { room_event, _, _ }, State ) ->
-	gen_event:notify( State#state.event, Event ),
+	fire( State, Event ),
 	{ noreply, State };
 
 % Catch All
@@ -251,7 +249,10 @@ terminate( _Reason, _State ) ->
 
 code_change( _Vsn, State, _Opts ) ->
 	{ ok, State }.
-	
+
+fire( S, E ) ->
+	gen_event:notify( S#state.event, E ).
+
 valid_nick( <<>> ) -> false;
 valid_nick( _ ) -> true.
 	

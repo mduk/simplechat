@@ -12,7 +12,11 @@ init( Pid ) ->
     } }.
 
 % Relay room event as-is
-handle_event( Event = { room_event, _ }, S = #state{ wshandler = Pid } ) ->
+handle_event( Event = { room_event, _, _ }, S = #state{ wshandler = Pid } ) ->
+	Pid ! Event,
+	{ ok, S };
+% Relay server event as-is
+handle_event( Event = { server_event, _ }, S = #state{ wshandler = Pid } ) ->
 	Pid ! Event,
 	{ ok, S };
 % Wrap client events and send to pid

@@ -137,6 +137,11 @@ websocket_handle( _, Req, S ) ->
 %===============================================================================
 % websocket_info/3
 %===============================================================================
+% Encode and send a server event
+%-------------------------------------------------------------------------------
+websocket_info( Msg = { server_event, _ }, Req, State ) ->
+	{ reply, { text, encode_message( Msg ) }, Req, State, hibernate };
+%-------------------------------------------------------------------------------
 % Encode and send a client event
 %-------------------------------------------------------------------------------
 websocket_info( Msg = { client_event, _ }, Req, State ) ->
@@ -256,6 +261,17 @@ parse_message( JsonBin ) ->
 % ==============================================================================
 % encode_message/1
 % ==============================================================================
+% Server Event: room_opened
+% ------------------------------------------------------------------------------
+encode_message( { server_event, { room_opened, RoomName } } ) ->
+	mochijson2:encode( { struct, [
+		{ source, server },
+		{ type, room_opened },
+		{ room, { struct, [
+			{ name, RoomName }
+		] } }
+	] } );
+% ------------------------------------------------------------------------------
 % Room Event: message
 % ------------------------------------------------------------------------------
 encode_message( { room_event, { Room, _ }, { message, { Nick, _ }, Message } } ) ->
@@ -291,7 +307,7 @@ encode_message( { room_event, { Room, _ }, { Motion, _, Client } } ) when Motion
 % Relayed room event --- Deprecated?
 % ------------------------------------------------------------------------------
 encode_message( { client_event, Event = { room_event, _, _ } } ) ->
-	io:format( "Room Event wrapped in a client event~n" ),
+	io:format( "Room Event wrapped in a client event: ~p~n", [ Event ]  ),
 	encode_message( Event );
 % ------------------------------------------------------------------------------
 % Client Event: joined
