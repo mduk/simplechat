@@ -12,7 +12,9 @@
 	topic/1, 
 	topic/2, 
 	member_list/1,
-	watch/1 
+	watch/1,
+	start_plugin/2,
+	start_plugin/3
 ] ).
 
 -record( state, { 
@@ -20,7 +22,8 @@
 	name, 
 	event, 
 	clients = [], 
-	topic = { open, <<"">> }
+	topic = { open, <<"">> },
+	plugins = []
 } ).
 
 -record( member, { pid, nick } ).
@@ -55,6 +58,12 @@ info( Room ) ->
 
 watch( Room ) ->
 	gen_server:cast( Room, { watch, self() } ).
+
+start_plugin( Room, PluginModule ) ->
+	start_plugin( Room, PluginModule, [] ).
+
+start_plugin( Room, PluginModule, Args ) ->
+	gen_server:cast( Room, { start_plugin, self(), { PluginModule, Args } } ).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % gen_server functions
@@ -272,6 +281,21 @@ handle_cast( { unlock_topic, ClientPid }, State = #state{ topic = { { locked, Ke
 	{ noreply, State };
 
 %-------------------------------------------------------------------------------
+% Start a plugin
+%-------------------------------------------------------------------------------
+handle_cast( { start_plugin, ClientPid, { PluginModule, Args } }, State ) ->
+	#state{ plugins = Plugins } = State,
+	
+	{ ok, PluginPid } = PluginModule:start_link( Args ),
+	subscribe( State, all, PluginPid ),
+	
+	Event = { plugin_started, PluginPid },
+	ClientPid ! Event,
+	fire( State, Event ),
+	
+	{ noreply, State#state{ plugins = [ Plugins | PluginPid ] } };	
+
+%-------------------------------------------------------------------------------
 % Catch All
 %-------------------------------------------------------------------------------
 handle_cast( _Msg, State ) ->
@@ -298,6 +322,15 @@ code_change( _OldVsn, _State, _Extra ) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Private functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%===============================================================================
+% subscribe/3
+%
+% Subscribe a process to room events
+%===============================================================================
+subscribe( State, SubscribedEvents, Subscriber ) ->
+	#state{ pid = Pid, name = Name, event = EventPid } = State,
+	gen_event:add_handler( EventPid, simplechat_client_room_handler, { Subscriber, { Name, Pid }, SubscribedEvents } ).
 
 %===============================================================================
 % gather_room_info/1
