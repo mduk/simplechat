@@ -100,16 +100,16 @@ websocket_init( _, Req, [] ) ->
 % Received a message over the websocket
 websocket_handle( { text, Msg }, Req, State ) ->
 	% Parse the JSON payload into a tuple and call it on the client
-	case simplechat_client:proxy_call( State#state.client_pid, parse_message( Msg ) ) of
+	case simplechat_client:proxy_call( State#state.client_pid, simplechat_protocol:decode( Msg ) ) of
 		
 		% Ident error
 		{ { ident, _ }, { error, invalid_nick } } ->
 			self() ! close,
-			{ reply, { text, encode_message( { error, "Invalid Nick" } ) }, Req, State };
+			{ reply, { text, simplechat_protocol:encode( { error, "Invalid Nick" } ) }, Req, State };
 		
 		% Ident successful
 		{ { ident, _ }, ok } ->
-			{ reply, { text, encode_message( welcome ) }, Req, State };
+			{ reply, { text, simplechat_protocol:encode( welcome ) }, Req, State };
 		
 		% Call successful, no result to return
 		{ _, ok } -> 
@@ -117,7 +117,7 @@ websocket_handle( { text, Msg }, Req, State ) ->
 		
 		% Call successful with a result term
 		{ _, { ok, Result } } ->
-			Reply = encode_message( Result ),
+			Reply = simplechat_protocol:encode( Result ),
 			{ reply, { text, list_to_binary( Reply ) }, Req, State, hibernate };
 		
 		% Call result pending
@@ -125,7 +125,7 @@ websocket_handle( { text, Msg }, Req, State ) ->
 			{ ok, Req, State, hibernate };
 		
 		{ _, { error, Reason } } -> 
-			Reply = encode_message( { error, io_lib:format(
+			Reply = simplechat_protocol:encode( { error, io_lib:format(
 				"Client Error: ~p", [ Reason ]
 			) } ),
 			{ reply, { text, Reply }, Req, State, hibernate }
@@ -140,17 +140,17 @@ websocket_handle( _, Req, S ) ->
 % Encode and send a server event
 %-------------------------------------------------------------------------------
 websocket_info( Msg = { server_event, _ }, Req, State ) ->
-	{ reply, { text, encode_message( Msg ) }, Req, State, hibernate };
+	{ reply, { text, simplechat_protocol:encode( Msg ) }, Req, State, hibernate };
 %-------------------------------------------------------------------------------
 % Encode and send a client event
 %-------------------------------------------------------------------------------
 websocket_info( Msg = { client_event, _ }, Req, State ) ->
-	{ reply, { text, encode_message( Msg ) }, Req, State, hibernate };
+	{ reply, { text, simplechat_protocol:encode( Msg ) }, Req, State, hibernate };
 %-------------------------------------------------------------------------------
 % Encode and send a room event
 %-------------------------------------------------------------------------------
 websocket_info( Msg = { room_event, _, _ }, Req, State ) ->
-	{ reply, { text, encode_message( Msg ) }, Req, State, hibernate };
+	{ reply, { text, simplechat_protocol:encode( Msg ) }, Req, State, hibernate };
 %-------------------------------------------------------------------------------
 % Send data down the websocket
 %-------------------------------------------------------------------------------
@@ -160,7 +160,7 @@ websocket_info( { send, Data }, Req, State ) when is_binary( Data ) ->
 % Encode and send a message down the websocket
 %-------------------------------------------------------------------------------
 websocket_info( { send, Message }, Req, State ) when is_tuple( Message ) ->
-	{ reply, { text, encode_message( Message ) }, Req, State, hibernate };
+	{ reply, { text, simplechat_protocol:encode( Message ) }, Req, State, hibernate };
 %-------------------------------------------------------------------------------
 % Close the socket
 %-------------------------------------------------------------------------------
@@ -186,200 +186,4 @@ websocket_terminate( _Reason, _Req, #state{ client_pid = ClientPid } ) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Private functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%===============================================================================
-% parse_message/1
-%===============================================================================
-% Parse an 'ident' message
-%-------------------------------------------------------------------------------
-parse_message( { ident, Props } ) ->
-	{ _, Name } = proplists:lookup( <<"name">>, Props ),
-	{ ident, Name };
-%-------------------------------------------------------------------------------
-% Parse a 'active_rooms' message
-%-------------------------------------------------------------------------------
-parse_message( { active_rooms, _ } ) ->
-	active_rooms;
-%-------------------------------------------------------------------------------
-% Parse a 'quit' message
-%-------------------------------------------------------------------------------
-parse_message( { quit, _ } ) ->
-	quit;
-%-------------------------------------------------------------------------------
-% Parse a 'join' message
-%-------------------------------------------------------------------------------
-parse_message( { join, Props } ) ->
-	{ _, Room } = proplists:lookup( <<"room">>, Props ),
-	{ join, Room };
-%-------------------------------------------------------------------------------
-% Parse a 'part' mssage
-%-------------------------------------------------------------------------------
-parse_message( { part, Props } ) ->
-	{ _, Room } = proplists:lookup( <<"room">>, Props ),
-	{ part, Room };
-%-------------------------------------------------------------------------------
-% Parse a 'set_topic' message
-%-------------------------------------------------------------------------------
-parse_message( { set_topic, Props } ) ->
-	{ _, Room } = proplists:lookup( <<"room">>, Props ),
-	{ _, Topic } = proplists:lookup( <<"topic">>, Props ),
-	{ set_topic, Room, Topic };
-%-------------------------------------------------------------------------------
-% Parse a 'lock_topic' message
-%-------------------------------------------------------------------------------
-parse_message( { lock_topic, Props } ) ->
-	{ _, Room } = proplists:lookup( <<"room">>, Props ),
-	{ lock_topic, Room };
-%-------------------------------------------------------------------------------
-% Parse a 'unlock_topic' message
-%-------------------------------------------------------------------------------
-parse_message( { unlock_topic, Props } ) ->
-	{ _, Room } = proplists:lookup( <<"room">>, Props ),
-	{ unlock_topic, Room };
-%-------------------------------------------------------------------------------
-% Parse a 'say' message
-%-------------------------------------------------------------------------------
-parse_message( { say, Props } ) ->
-	{ _, Room } = proplists:lookup( <<"room">>, Props ),
-    { _, Message } = proplists:lookup( <<"message">>, Props ),
-	{ say, Room, Message };
-%-------------------------------------------------------------------------------
-% Parse a message from it's decoded json representation
-%-------------------------------------------------------------------------------
-parse_message( { struct, Props } ) ->
-	Type = case proplists:lookup( <<"type">>, Props ) of
-		none -> throw( json_lacks_type );
-		{ _, TypeBin } -> binary_to_atom( TypeBin, utf8 )
-	end,
-	parse_message( { Type, Props } );
-%-------------------------------------------------------------------------------
-% Parse json payload
-%-------------------------------------------------------------------------------
-parse_message( JsonBin ) ->
-        parse_message( mochijson2:decode( JsonBin ) ).
-
-% ==============================================================================
-% encode_message/1
-% ==============================================================================
-% Server Event: room_opened
-% ------------------------------------------------------------------------------
-encode_message( { server_event, { room_opened, RoomName } } ) ->
-	mochijson2:encode( { struct, [
-		{ source, server },
-		{ type, room_opened },
-		{ room, { struct, [
-			{ name, RoomName }
-		] } }
-	] } );
-% ------------------------------------------------------------------------------
-% Room Event: message
-% ------------------------------------------------------------------------------
-encode_message( { room_event, { Room, _ }, { message, { Nick, _ }, Message } } ) ->
-	mochijson2:encode( { struct, [
-		{ source, room },
-		{ type, message },
-		{ room, Room },
-		{ client, Nick },
-		{ body, Message }
-	] } );
-% ------------------------------------------------------------------------------
-% Room Event: topic_changed/topic_locked/topic_unlocked event
-% ------------------------------------------------------------------------------
-encode_message( { room_event, { Room, _ }, { Event, Topic } } ) 
-when Event =:= topic_changed; Event =:= topic_locked; Event =:= topic_unlocked ->
-	mochijson2:encode( { struct, [
-		{ source, room },
-		{ room, Room },
-		{ type, Event },
-		{ topic, Topic }
-	] } );
-% ------------------------------------------------------------------------------
-% Room Event: joined/parted
-% ------------------------------------------------------------------------------
-encode_message( { room_event, { Room, _ }, { Motion, _, Client } } ) when Motion =:= joined; Motion =:= parted ->
-	mochijson2:encode( { struct, [
-		{ source, room },
-		{ type, atom_to_binary( Motion, utf8 ) },
-		{ room, Room },
-		{ client, Client }
-	] } );
-% ------------------------------------------------------------------------------
-% Relayed room event --- Deprecated?
-% ------------------------------------------------------------------------------
-encode_message( { client_event, Event = { room_event, _, _ } } ) ->
-	io:format( "Room Event wrapped in a client event: ~p~n", [ Event ]  ),
-	encode_message( Event );
-% ------------------------------------------------------------------------------
-% Client Event: joined
-% ------------------------------------------------------------------------------
-encode_message( { client_event, { joined, RoomInfo } } ) ->
-	mochijson2:encode( { struct, [
-		{ source, client },
-		{ type, joined },
-		{ room, encode_message( { room_info, RoomInfo } ) }
-	] } );
-% ------------------------------------------------------------------------------
-% Client Event: Parted
-% ------------------------------------------------------------------------------
-encode_message( { client_event, { parted, { RoomName, _ } } } ) ->
-	mochijson2:encode( { struct, [
-		{ source, client },
-		{ type, parted },
-		{ room, RoomName }
-	] } );
-% ------------------------------------------------------------------------------
-% Client Event: room_info
-% ------------------------------------------------------------------------------
-encode_message( { client_event, { room_info, RoomInfo } } ) ->
-	mochijson2:encode( { struct, [
-		{ source, client },
-		{ type, room_info },
-		{ room, encode_message( { room_info, RoomInfo } ) }
-	] } );
-% ------------------------------------------------------------------------------
-% Client Event: room error
-% ------------------------------------------------------------------------------
-encode_message( { client_event, { room, { RoomName, _ }, { error, Reason } } } ) ->
-	encode_message( { error, [ "Room Error: ", RoomName, ": ", io_lib:format( "~p", [ Reason ] ) ] } );
-% ------------------------------------------------------------------------------
-% Client Event: room denied
-% ------------------------------------------------------------------------------
-encode_message( { client_event, { denied, { RoomName, _ } } } ) ->
-	encode_message( { error, [ "Access to room \"", RoomName, "\" denied." ] } );
-% ------------------------------------------------------------------------------
-% Encode a 'welcome' message
-% ------------------------------------------------------------------------------
-encode_message( welcome ) ->
-	mochijson2:encode( { struct, [
-		{ type, welcome }
-	] } );
-% ------------------------------------------------------------------------------
-% Encode room info
-% ------------------------------------------------------------------------------
-encode_message( { room_info, RoomInfo } ) ->
-	{ struct, [
-		{ name, proplists:get_value( name, RoomInfo ) },
-		{ topic, proplists:get_value( topic, RoomInfo ) },
-		{ members, proplists:get_value( members, RoomInfo ) }
-	] };
-% ------------------------------------------------------------------------------
-% Encode an 'active_rooms' message
-% ------------------------------------------------------------------------------
-encode_message( { active_rooms, Rooms } ) ->
-	RoomStructs = lists:map( fun( RoomInfo ) ->
-		encode_message( { room_info, RoomInfo } )
-	end, Rooms ),
-	mochijson2:encode( { struct, [
-		{ type, active_rooms },
-		{ rooms, RoomStructs }
-	] } );
-% ------------------------------------------------------------------------------
-% Encode an 'error' message
-% ------------------------------------------------------------------------------
-encode_message( { error, Message } ) ->
-	mochijson2:encode( { struct, [
-		{ type, error },
-		{ title, <<"Server Error">> },
-		{ message, list_to_binary( Message ) }
-	] } ). 
 
