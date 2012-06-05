@@ -1,3 +1,9 @@
+% Pass events from the client event manager to the websocket handler.
+%
+% The client event manager relays server and room events, as well as
+% firing it's own events, which we wrap in a { client_event, Event }
+% wrapper.
+
 -module( simplechat_websocket_client_handler ).
 
 -behaviour( gen_event ).

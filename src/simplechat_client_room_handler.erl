@@ -1,3 +1,11 @@
+% Pass events from the room event manager to the client process
+%
+% This can either just pass across all events indiscriminately,
+% or a list of specific event types that the client is interested
+% can be specified and only those events are passed. The difference
+% between being a fully fledged member of the room, or just observing
+% the state of the room.
+
 -module( simplechat_client_room_handler ).
 
 -behaviour( gen_event ).
