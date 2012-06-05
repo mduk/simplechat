@@ -116,12 +116,11 @@ handle_call( _Msg, _From, State ) ->
 %-------------------------------------------------------------------------------
 handle_cast( { watch, ClientPid }, State ) ->
 	
-	Args = { ClientPid, { State#state.name, self() }, [
+	subscribe( State, [
 		topic_changed,
 		joined,
 		parted
-	] },
-	gen_event:add_handler( State#state.event, simplechat_client_room_handler, Args ),
+	], ClientPid ),
 	
 	{ noreply, State };
 
