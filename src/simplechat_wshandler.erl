@@ -12,8 +12,13 @@
 
 -record( state, { pid, name, client_id, client_pid } ).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Behaviour: cowboy_http_handler
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% ==============================================================================
+% init/3
+% ==============================================================================
 init( { _Any, http }, Req, [] ) ->
         case cowboy_http_req:header( 'Upgrade', Req ) of
                 { undefined, Req2 } -> { ok, Req2, undefined };
@@ -21,6 +26,9 @@ init( { _Any, http }, Req, [] ) ->
                 { <<"WebSocket">>, _Req2 } -> { upgrade, protocol, cowboy_http_websocket }
         end.
 
+% ==============================================================================
+% handle/2
+% ==============================================================================
 handle( Req, S ) ->
 	HttpPath = case cowboy_http_req:path( Req ) of
 		{ [], _ }   -> <<"/index.html">>;
@@ -29,12 +37,17 @@ handle( Req, S ) ->
 	{ ok, Req2 } = serve_file( Req, <<"www", HttpPath/binary>> ),
 	{ ok, Req2, S }.
 
+% ==============================================================================
+% terminate/2
+% ==============================================================================
 terminate( _, _ ) ->
 	ok.
 
+% ==============================================================================
 % serve_file/2
 %
 % Serves a file specified by Path
+% ==============================================================================
 serve_file( Req, Path ) ->
 	{ Code, Headers, Body } = case filelib:is_regular( Path ) of 
 		true ->
@@ -50,9 +63,11 @@ serve_file( Req, Path ) ->
 	
 	cowboy_http_req:reply( Code, Headers, Body, Req ).
 
+% ==============================================================================
 % mime_type/1
 %
 % Return a mime type for a given file extension
+% ==============================================================================
 mime_type( <<".css">>  ) -> <<"text/css">>;
 mime_type( <<".js">>   ) -> <<"application/x-javascript">>;
 mime_type( <<".html">> ) -> <<"text/html">>;
@@ -63,25 +78,35 @@ mime_type( Unknown     ) ->
 	io:format( "Unknown extension! ~p~n", [ Unknown ] ),
 	<<"text/plain">>.
 
+% ==============================================================================
 % convert_path/1
 % 
 % Take the parsed path list from cowboy and return a single binary of the path
+% ==============================================================================
 convert_path( { Path, _ } ) -> convert_path( Path );
 convert_path( Path )        -> convert_path( Path, [] ).
 
+% ==============================================================================
 % convert_path/2
 %
 % Glue a list of binary path segments together
+% ==============================================================================
 convert_path( [], Acc ) ->
 	erlang:iolist_to_binary( lists:reverse( Acc ) );
 convert_path( [ H | T ], Acc ) ->
 	convert_path( T, [ H, <<"/">> | Acc ] ).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Behaviour: cowboy_http_websocket_handler
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% ==============================================================================
 % Initialise websocket handler
+% ==============================================================================
 websocket_init( _, Req, [] ) ->
-	
+
+	process_flag( trap_exit, true ),
+
 	% Make up a ClientId
 	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
 	ClientId = { PeerIp, calendar:local_time() },
@@ -98,7 +123,9 @@ websocket_init( _, Req, [] ) ->
 		client_pid = ClientPid
 	}, hibernate }.
 
+% ==============================================================================
 % Received a message over the websocket
+% ==============================================================================
 websocket_handle( { text, Msg }, Req, State ) ->
 	% Parse the JSON payload into a tuple and call it on the client
 	case simplechat_client:proxy_call( State#state.client_pid, simplechat_protocol:decode( Msg ) ) of
@@ -131,37 +158,50 @@ websocket_handle( { text, Msg }, Req, State ) ->
 			) } ),
 			{ reply, { text, Reply }, Req, State, hibernate }
 	end;
+% ==============================================================================
 % Catch all websocket messages
+% ==============================================================================
 websocket_handle( _, Req, S ) ->
 	{ ok, Req, S }.
 
 %===============================================================================
 % websocket_info/3
 %===============================================================================
+% Helper process termination
+%-------------------------------------------------------------------------------
+websocket_info( { 'EXIT', _, normal }, Req, State ) -> 
+	{ ok, Req, State };
+websocket_info( { 'EXIT', Pid, Reason }, Req, State ) ->
+	error_logger:warning_msg( 
+		"** Websocket handler ~p helper ~p crashed!~n"
+		"** Reason: ~p~n", 
+		[ self(), Pid, Reason ] 
+	),
+	{ ok, Req, State };
+%-------------------------------------------------------------------------------
 % Encode and send a server event
 %-------------------------------------------------------------------------------
 websocket_info( Msg = { server_event, _ }, Req, State ) ->
-	{ reply, { text, simplechat_protocol:encode( Msg ) }, Req, State, hibernate };
+	send( State, Msg ),
+	{ ok, Req, State, hibernate };
 %-------------------------------------------------------------------------------
 % Encode and send a client event
 %-------------------------------------------------------------------------------
 websocket_info( Msg = { client_event, _ }, Req, State ) ->
-	{ reply, { text, simplechat_protocol:encode( Msg ) }, Req, State, hibernate };
+	send( State, Msg ),
+	{ ok, Req, State, hibernate };
 %-------------------------------------------------------------------------------
 % Encode and send a room event
 %-------------------------------------------------------------------------------
 websocket_info( Msg = { room_event, _, _ }, Req, State ) ->
-	{ reply, { text, simplechat_protocol:encode( Msg ) }, Req, State, hibernate };
+	send( State, Msg ),
+	{ ok, Req, State, hibernate };
 %-------------------------------------------------------------------------------
 % Send data down the websocket
 %-------------------------------------------------------------------------------
-websocket_info( { send, Data }, Req, State ) when is_binary( Data ) ->
+websocket_info( { send, Data }, Req, State ) ->
 	{ reply, { text, Data }, Req, State, hibernate };
-%-------------------------------------------------------------------------------
-% Encode and send a message down the websocket
-%-------------------------------------------------------------------------------
-websocket_info( { send, Message }, Req, State ) when is_tuple( Message ) ->
-	{ reply, { text, simplechat_protocol:encode( Message ) }, Req, State, hibernate };
+
 %-------------------------------------------------------------------------------
 % Close the socket
 %-------------------------------------------------------------------------------
@@ -188,3 +228,12 @@ websocket_terminate( _Reason, _Req, #state{ client_pid = ClientPid } ) ->
 % Private functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%===============================================================================
+% send/2
+%
+% Encode and queue the message for sending in a seperate helper process
+%===============================================================================
+send( #state{ pid = Pid }, Msg ) ->
+	spawn_link( fun() ->
+		Pid ! { send, simplechat_protocol:encode( Msg ) }
+	end ).
