@@ -17,6 +17,12 @@ start_link( Url ) ->
 
 init( Url ) ->
 	process_flag( trap_exit, true ),
+	
+	case application:start( inets ) of
+		ok ->	ok;
+		{ error, { already_started, _ } } -> ok
+	end,
+	
 	{ ok, #state{
 		url = Url
 	} }.
