@@ -10,7 +10,7 @@
 -behaviour( cowboy_http_websocket_handler ).
 -export( [ websocket_init/3, websocket_handle/3, websocket_info/3, websocket_terminate/3 ] ).
 
--record( state, { name, client_id, client_pid } ).
+-record( state, { pid, name, client_id, client_pid } ).
 
 % Behaviour: cowboy_http_handler
 
@@ -93,6 +93,7 @@ websocket_init( _, Req, [] ) ->
 	simplechat_client:add_handler( ClientPid, simplechat_websocket_client_handler, self() ),
 	
 	{ ok, cowboy_http_req:compact( Req ), #state{ 
+		pid = self(),
 		client_id = ClientId,
 		client_pid = ClientPid
 	}, hibernate }.
