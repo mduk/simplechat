@@ -16,6 +16,7 @@ start_link( Url ) ->
 	gen_server:start_link( ?MODULE, Url, [] ).
 
 init( Url ) ->
+	process_flag( trap_exit, true ),
 	{ ok, #state{
 		url = Url
 	} }.
@@ -26,11 +27,27 @@ handle_call( _, _, S ) ->
 handle_cast( _, S ) ->
 	{ noreply, S }.
 
+%-------------------------------------------------------------------------------
+% Helper process exit signals
+%-------------------------------------------------------------------------------
+handle_info( { 'EXIT', _, normal }, State ) -> 
+	{ noreply, State };
+handle_info( { 'EXIT', Pid, Reason }, State ) ->
+	error_logger:warning_msg( 
+		"** Plugin ~p (~s) helper ~p crashed!~n"
+		"** Reason: ~p~n", 
+		[ self(), ?MODULE, Pid, Reason ] 
+	),
+	{ noreply, State };
+%-------------------------------------------------------------------------------
+% Encode event and POST to url
+%-------------------------------------------------------------------------------
 handle_info( Event, State ) ->
 	#state{ url = Url } = State,
-	Body = list_to_binary( simplechat_protocol:encode( Event ) ),
-	io:format( "Pinging ~p~n",  [ Body ] ),
-	httpc:request( post, { Url, [], "application/json", Body }, [], [] ),
+	spawn_link( fun() ->
+		Body = list_to_binary( simplechat_protocol:encode( Event ) ),
+		httpc:request( post, { Url, [], "application/json", Body }, [], [] )
+	end ),
 	{ noreply, State }.
 
 terminate( _, _ ) ->
