@@ -109,7 +109,7 @@ handle_call( nick, _From, State = #state{ nick=undefined } ) ->
 handle_call( nick, _From, State = #state{ nick=Nick } ) ->
 	{ reply, { ok, Nick }, State };
 % Active rooms (equiv to irc /list, all server rooms)
-handle_call( active_rooms, _From, State ) ->
+handle_call( room_list, _From, State ) ->
 	lists:foreach( fun( { _, Room } ) ->
 		simplechat_room:info( Room )
 	end, simplechat_room_sup:rooms() ),

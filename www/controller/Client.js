@@ -229,7 +229,7 @@ Ext.define( 'SimpleChat.controller.Client', {
 	activeRooms: function()
 	{
 		this.sendPacket( {
-			type: 'active_rooms'
+			type: 'room_list'
 		} );
 	},
 	
