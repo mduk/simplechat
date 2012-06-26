@@ -63,6 +63,23 @@ Ext.define( 'SimpleChat.controller.Client', {
 				}
 			},
 			
+			'#room-list-win #shoutButton' : {
+				click: function( btn, e )
+				{
+					var controller = this;
+					
+					Ext.Msg.prompt( 'Message', 'Enter your message:', function( clicked, message )
+					{
+						if ( clicked != 'ok' )
+						{
+							return;
+						}
+						
+						controller.shout( message );
+					} );
+				}
+			},
+			
 			// Room list item
 			'#room-list-win #room-list' : {
 				// Double Click
@@ -223,6 +240,14 @@ Ext.define( 'SimpleChat.controller.Client', {
 			type: 'say',
 			room: room,
 			body: message
+		} );
+	},
+	
+	shout: function( Message )
+	{
+		this.sendPacket( {
+			type: 'shout',
+			message: Message
 		} );
 	},
 	

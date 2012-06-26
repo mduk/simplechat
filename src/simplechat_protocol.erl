@@ -56,8 +56,14 @@ decode( { unlock_topic, Props } ) ->
 %-------------------------------------------------------------------------------
 decode( { say, Props } ) ->
 	{ _, Room } = proplists:lookup( <<"room">>, Props ),
-    { _, Message } = proplists:lookup( <<"message">>, Props ),
+	{ _, Message } = proplists:lookup( <<"message">>, Props ),
 	{ say, Room, Message };
+%-------------------------------------------------------------------------------
+% Parse a 'shout' message
+%-------------------------------------------------------------------------------
+decode( { shout, Props } ) ->
+	{ _, Message } = proplists:lookup( <<"message">>, Props ),
+	{ shout, Message };
 %-------------------------------------------------------------------------------
 % Parse a message from it's decoded json representation
 %-------------------------------------------------------------------------------

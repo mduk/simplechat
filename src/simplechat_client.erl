@@ -192,6 +192,13 @@ handle_call( { say, Room, Message }, _From, State ) ->
 			{ reply, { error, not_present_in_room }, State }
 			
 	end;
+% Shout to all rooms
+handle_call( { shout, Message }, _From, State ) ->
+	#state{ rooms = Rooms } = State,
+	lists:foreach( fun( { _, Room } ) ->
+		simplechat_room:say( Room, Message )
+	end, Rooms ),
+	{ reply, pending, State };
 % Quit command
 handle_call( quit, _From, State = #state{ rooms = Rooms } ) ->
 	part_all( Rooms ),

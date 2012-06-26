@@ -24,6 +24,10 @@ Ext.define( 'SimpleChat.view.room.ListWindow', {
 			id: "refreshList",
 			iconCls: 'icon-arrow-refresh',
 			disabled: true
+		},
+		{
+			text: "Shout",
+			id: "shoutButton"
 		}
 	],
 	
