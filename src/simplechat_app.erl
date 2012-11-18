@@ -18,6 +18,12 @@ start_http() ->
 	],
 
 	cowboy:start_listener( http, 10, 
-		cowboy_tcp_transport, [ { port, 8080 } ],
+		cowboy_tcp_transport, [ { port, env( port, 8000 ) } ],
 		cowboy_http_protocol, [ { dispatch, HttpDispatchRules } ] 
 	).
+
+env( Param, Default ) ->
+	case application:get_env( Param ) of
+		undefined -> Default;
+		{ ok, Value } -> Value
+	end.
