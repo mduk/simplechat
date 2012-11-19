@@ -10,7 +10,7 @@
 -behaviour( cowboy_http_websocket_handler ).
 -export( [ websocket_init/3, websocket_handle/3, websocket_info/3, websocket_terminate/3 ] ).
 
--record( state, { pid, name, client_id, client_pid } ).
+-record( state, { pid, name, client_pid=undefined } ).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Behaviour: cowboy_http_handler
@@ -118,45 +118,59 @@ websocket_init( _, Req, [] ) ->
 	simplechat_client:add_handler( ClientPid, simplechat_websocket_client_handler, self() ),
 	
 	{ ok, cowboy_http_req:compact( Req ), #state{ 
-		pid = self(),
-		client_id = ClientId,
-		client_pid = ClientPid
+		pid = self()
 	}, hibernate }.
 
 % ==============================================================================
 % Received a message over the websocket
 % ==============================================================================
 websocket_handle( { text, Msg }, Req, State ) ->
-	% Parse the JSON payload into a tuple and call it on the client
-	case simplechat_client:proxy_call( State#state.client_pid, simplechat_protocol:decode( Msg ) ) of
-		
-		% Ident error
-		{ { ident, _ }, { error, invalid_nick } } ->
-			self() ! close,
-			{ reply, { text, simplechat_protocol:encode( { error, "Invalid Nick" } ) }, Req, State };
-		
-		% Ident successful
-		{ { ident, _ }, ok } ->
-			{ reply, { text, simplechat_protocol:encode( welcome ) }, Req, State };
-		
-		% Call successful, no result to return
-		{ _, ok } -> 
-			{ ok, Req, State, hibernate };
-		
-		% Call successful with a result term
-		{ _, { ok, Result } } ->
-			Reply = simplechat_protocol:encode( Result ),
-			{ reply, { text, list_to_binary( Reply ) }, Req, State, hibernate };
-		
-		% Call result pending
-		{ _, pending } -> 
-			{ ok, Req, State, hibernate };
-		
-		{ _, { error, Reason } } -> 
-			Reply = simplechat_protocol:encode( { error, io_lib:format(
-				"Client Error: ~p", [ Reason ]
-			) } ),
-			{ reply, { text, Reply }, Req, State, hibernate }
+	Packet = simplechat_protocol:decode( Msg ),
+	
+	case Packet of 
+		{ ident, Nick, Password } ->
+			io:format( ">>> CLIENT WANTS TO AUTH WITH ~p~n", [ {Nick,Password} ] ),
+			
+			case simplechat_auth:ident( Nick, Password ) of
+				{ ok, Pid } ->
+					simplechat_client:add_handler( Pid, simplechat_websocket_client_handler, self() ),
+					Reply = simplechat_protocol:encode( welcome ),
+					{ reply, { text, Reply }, Req, State#state{ client_pid = Pid } };
+				{ denied, Reason } ->
+					Reply = simplechat_protocol:encode( { error, Reason } ),
+					{ reply, { text, Reply }, Req, State }
+			end;
+			
+		Packet ->
+			% Parse the JSON payload into a tuple and call it on the client
+			io:format( "Proxy calling: ~p~n", [ Packet ] ),
+			case simplechat_client:proxy_call( State#state.client_pid, Packet ) of
+				
+				% Call successful, no result to return
+				{ _, ok } -> 
+					{ ok, Req, State, hibernate };
+				
+				% Call successful with a result term
+				{ _, { ok, Result } } ->
+					Reply = simplechat_protocol:encode( Result ),
+					{ reply, { text, list_to_binary( Reply ) }, Req, State };
+				
+				% Call result pending
+				{ _, pending } -> 
+					{ ok, Req, State, hibernate };
+				
+				{ _, { error, Reason } } -> 
+					Reply = simplechat_protocol:encode( { error, io_lib:format(
+						"Client Error: ~p", [ Reason ]
+					) } ),
+					{ reply, { text, Reply }, Req, State, hibernate };
+					
+				Any ->
+					Reply = simplechat_protocol:encode( { error, io_lib:format(
+						"Hmmmm: ~p", [ Any ]
+					) } ),
+					{ reply, { text, Reply }, Req, State, hibernate }
+			end
 	end;
 % ==============================================================================
 % Catch all websocket messages

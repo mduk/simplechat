@@ -91,13 +91,9 @@ handle_cast( _, State ) -> { noreply, State }.
 handle_call( { add_handler, Module, Args }, _From, State ) ->
 	Result = gen_event:add_handler( State#state.event, Module, Args ),
 	{ reply, Result, State };
-% Ident
-handle_call( { ident, Nick }, _From, State ) ->
-	case valid_nick( Nick ) of
-		true  -> { reply, ok, State#state{ nick = Nick } };
-		false -> { reply, { error, invalid_nick }, State }
-	end;
+%-------------------------------------------------------------------------------
 % Set Nick
+%-------------------------------------------------------------------------------
 handle_call( { nick, Nick }, _From, State ) ->
 	case valid_nick( Nick ) of
 		true  -> { reply, ok, State#state{ nick = Nick } };

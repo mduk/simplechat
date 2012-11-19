@@ -27,7 +27,7 @@ Ext.define( 'SimpleChat.controller.Client', {
 							"Please specify a nickname:", 
 							function( clicked, nick )
 							{
-								controller.connect( nick );
+								controller.connect( nick, "mypassword" );
 							} 
 						);
 						
@@ -151,7 +151,7 @@ Ext.define( 'SimpleChat.controller.Client', {
 	 * Open the websocket, fire the connected
 	 * event and send the ident packet.
 	 */
-	connect: function( nick )
+	connect: function( nick, password )
 	{
 		// Create the websocket
 		this.ws = ws = new WebSocket( this.wsUrl );
@@ -168,7 +168,8 @@ Ext.define( 'SimpleChat.controller.Client', {
 			// Identify with the server
 			controller.sendPacket( {
 				type: 'ident',
-				name: nick
+				name: nick,
+				password: password
 			} );
 		};
 		
