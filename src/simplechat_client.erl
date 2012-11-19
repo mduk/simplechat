@@ -103,12 +103,14 @@ handle_call( { nick, Nick }, _From, State ) ->
 		true  -> { reply, ok, State#state{ nick = Nick } };
 		false -> { reply, { error, invalid_nick }, State }
 	end;
+%-------------------------------------------------------------------------------
 % Get Nick 
-handle_call( nick, _From, State = #state{ nick=undefined } ) ->
-	{ reply, { error, undefined }, State };
+%-------------------------------------------------------------------------------
 handle_call( nick, _From, State = #state{ nick=Nick } ) ->
 	{ reply, { ok, Nick }, State };
+%-------------------------------------------------------------------------------
 % Active rooms (equiv to irc /list, all server rooms)
+%-------------------------------------------------------------------------------
 handle_call( room_list, _From, State ) ->
 	lists:foreach( fun( { _, Room } ) ->
 		simplechat_room:info( Room )
