@@ -1,7 +1,7 @@
 Ext.define( 'Simplechat.view.room.Window', {
 	extend: 'Ext.window.Window',
 	
-	iconCls: 'icon-user-comment',
+	iconCls: 'icon-silk-user-comment',
 	maximizable: true,
 	
 	width: 400,

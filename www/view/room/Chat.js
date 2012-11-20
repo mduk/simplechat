@@ -1,6 +1,6 @@
 Ext.define( 'SimpleChat.view.room.Chat', {
 	extend: 'Ext.window.Window',
-	iconCls: 'icon-user-comment',
+	iconCls: 'icon-silk-user-comment',
 	alias: 'widget.roomChatWindow',
 	maximizable: true,
 	width: 400,
@@ -24,12 +24,12 @@ Ext.define( 'SimpleChat.view.room.Chat', {
 		{
 			text: "Set Topic",
 			id: 'setTopicButton',
-			iconCls: 'icon-application-edit'
+			iconCls: 'icon-silk-application-edit'
 		},
 		{
 			text: "Lock Topic",
 			id: 'lockTopicButton',
-			iconCls: 'icon-lock'	
+			iconCls: 'icon-silk-lock'	
 		}
 	],
 	

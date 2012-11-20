@@ -1,7 +1,7 @@
 Ext.define( 'SimpleChat.view.room.ListWindow', {
 	extend: 'Ext.window.Window',
 	title: 'Chat Rooms',
-	iconCls: 'icon-comments',
+	iconCls: 'icon-silk-comments',
 	width: 600,
 	height: 600,
 	scrollable: true,
@@ -11,18 +11,18 @@ Ext.define( 'SimpleChat.view.room.ListWindow', {
 		{
 			text: "Connect",
 			id: 'connectionButton',
-			iconCls: 'icon-connect'	
+			iconCls: 'icon-silk-connect'	
 		},
 		{ 
 			text: "Create Room",
 			id: "createRoomButton",
-			iconCls: 'icon-comment-add',
+			iconCls: 'icon-silk-comment-add',
 			disabled: true
 		},
 		{
 			text: "Refresh List",
 			id: "refreshList",
-			iconCls: 'icon-arrow-refresh',
+			iconCls: 'icon-silk-arrow-refresh',
 			disabled: true
 		},
 		{
