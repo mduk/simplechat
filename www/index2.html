@@ -1,0 +1,190 @@
+<html>
+	<head>
+		<link rel="stylesheet" type="text/css" href="css/icons.css">
+		<link rel="stylesheet" type="text/css" href="vendor/bootstrap/css/bootstrap.css">
+		<script type="text/javascript" src="vendor/jquery/jquery-1.8.3.js"></script>
+		<script type="text/javascript" src="vendor/bootstrap/js/bootstrap.js"></script>
+	</head>
+	<body>
+		<style type="text/css"></style>
+		<script type="text/javascript">
+var socket;
+
+function handle( p ) {
+	switch ( p.type ) {
+		case 'welcome':
+			$('#modal-connect').modal('hide');
+			break;
+			
+		case 'joined':
+			if ( p.source == "client" )
+			{
+				break;
+			}
+			
+			$('#modal-join').modal('hide');
+			$('#rooms .nav-tabs').append('<li><a data-toggle="tab" href="#' + p.room + '">' + p.room +'</a></li>');
+			$('#rooms .tab-content').append('<div class="tab-pane" id="' + p.room + '"><ul class="media-list"></ul></div>');
+			switchTab( p.room );
+			break;
+		
+		case 'message':
+			var html = $('#template-room-message').children().clone();
+			html.find('h4').html( p.client );
+			html.find('p').html( p.body );
+			$('#wiggle ul').append( html );
+			break;
+			
+		default:
+			console.log( 'Unhandled Message!' );
+			console.log( p );
+			break;
+	}	
+}
+
+function switchTab( tab ) {
+	$('#rooms .nav-tabs a[href="#' + tab + '"]').click()
+}
+
+$( function() {
+
+	// Modal: Connect
+	$('#modal-connect-btn').on( 'click', function( e ) {
+		
+		var
+			nick = $('#modal-connect-nickname').val(),
+			pass = $('#modal-connect-password').val();
+		
+		socket = new WebSocket('ws://localhost:8000/');
+		
+		socket.onopen = function()
+		{
+			console.log( 'WebSocket Opened' );
+			
+			socket.send( JSON.stringify( {
+				type: "ident",
+				name: nick,
+				password: pass
+			} ) );
+		};
+		
+		socket.onmessage = function( wsMsg )
+		{
+			console.log( 'Recv: ' + wsMsg.data );
+		
+			var msg = JSON.parse( wsMsg.data );
+			handle( msg );
+		};
+		
+		socket.onerror = function( e )
+		{
+			console.log( 'Websocket error!' );
+			console.log( e );
+		};
+		
+		socket.onclose = function()
+		{
+			console.log( 'WebSocket Closed' );
+		};
+	} );
+	
+	// Modal: Join
+	$( '#modal-join-btn' ).on( 'click', function( e ) {
+		
+		var room = $('#modal-join-room').val();
+		$('#modal-join-room').val('');
+		
+		socket.send( JSON.stringify( {
+			type: "join",
+			room: room
+		} ) );
+	} );
+	
+// ---------------------------------------------------------------------------------
+	
+	$('#modal-connect').modal('show');
+	
+} );
+		</script>
+		
+		<div class="page-container" style="margin: 20px">
+
+			<div id="rooms">
+			
+				<ul class="nav nav-tabs">
+					<li class="pull-right">
+						<div class="btn-group">
+							<a href="#modal-join" role="button" class="btn" data-toggle="modal">&plus;</a>
+						</div>
+					</li>
+					<li class="active"><a href="#debug" data-toggle="tab"><i class="icon-wrench"></i> Debug</a></li>
+					<li><a href="#more" data-toggle="tab"><i class="icon-th-list"></i> More</a></li>
+				</ul>
+	
+				<div class="tab-content">
+					<div class="tab-pane active" id="debug">
+						<div class="well">
+							<a href="#modal-connect" role="button" class="btn" data-toggle="modal">Connect</a>
+							<a href="#modal-join" role="button" class="btn" data-toggle="modal">Join Room</a>
+						</div>
+					</div>
+					<div class="tab-pane" id="more">
+						<div class="well"><p>Foshizzle</p></div>
+					</div>
+				</div>
+			
+			</div>
+			
+		</div>
+		
+		<!-- Modal: Connect -->
+		<div id="modal-connect" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+				<h3>Connect</h3>
+			</div>
+			<div class="modal-body">
+				<form class="form-horizontal">
+					<div class="control-group">
+						<input class="input-block-level" type="text" id="modal-connect-nickname" placeholder="Nickname">
+					</div>
+					<div class="control-group">
+						<input class="input-block-level" type="password" id="modal-connect-password" placeholder="Password">
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button class="btn btn-primary" id="modal-connect-btn">Connect</button>
+			</div>
+		</div>
+		
+		<!-- Modal: Nick -->
+		<div id="modal-join" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+				<h3>Join Room</h3>
+			</div>
+			<div class="modal-body">
+				<form class="form-horizontal">
+					<div class="control-group">
+						<input class="input-block-level" type="text" id="modal-join-room" placeholder="Room Name">
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button class="btn btn-primary" id="modal-join-btn">Join Room</button>
+			</div>
+		</div>
+		
+		<div id="template-room-message" style="display:none;">
+			<li class="media">
+				<a class="pull-left" href="#"><img class="media-object" src="http://placehold.it/64x64"></a>
+				<div class="media-body">
+					<h4 class="media-heading">Author</h4>
+					<p>Foobar</p>
+				</div>
+			</li>
+		</div>
+				
+	</body>
+</html>
