@@ -234,8 +234,6 @@ websocket_info( Msg, Req, State ) ->
 % Connection closed
 %-------------------------------------------------------------------------------
 websocket_terminate( _Reason, _Req, #state{ client_pid = ClientPid } ) ->
-	% Tell The client process to quit
-	simplechat_client:quit( ClientPid ),
 	ok.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
