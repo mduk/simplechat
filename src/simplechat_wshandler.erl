@@ -104,19 +104,7 @@ convert_path( [ H | T ], Acc ) ->
 % Initialise websocket handler
 % ==============================================================================
 websocket_init( _, Req, [] ) ->
-
 	process_flag( trap_exit, true ),
-
-	% Make up a ClientId
-	{ PeerIp, _ } = cowboy_http_req:peer_addr( Req ),
-	ClientId = { PeerIp, calendar:local_time() },
-	
-	% Start the client
-	{ ok, ClientPid } = simplechat_client_sup:start_client( ClientId ),
-	
-	% Register the client event handler
-	simplechat_client:add_handler( ClientPid, simplechat_websocket_client_handler, self() ),
-	
 	{ ok, cowboy_http_req:compact( Req ), #state{ 
 		pid = self()
 	}, hibernate }.
@@ -233,7 +221,7 @@ websocket_info( Msg, Req, State ) ->
 %===============================================================================
 % Connection closed
 %-------------------------------------------------------------------------------
-websocket_terminate( _Reason, _Req, #state{ client_pid = ClientPid } ) ->
+websocket_terminate( _Reason, _Req, #state{} ) ->
 	ok.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
