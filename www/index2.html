@@ -58,7 +58,7 @@ function handle( p ) {
 		case 'message':
 			var html = $('#template-room-message').children().clone();
 			html.find('h4').html( p.client );
-			html.find('img').attr( { src: 'http://www.gravatar.com/avatar/' + MD5( p.client ) + '?default=identicon' } );
+			html.find('img').attr( { src: 'http://www.gravatar.com/avatar/' + MD5( p.client ) + '?default=identicon&s=32' } );
 			html.find('p').html( p.body );
 			$('#' + tabId( p.room ) + ' ul.stream').append( html );
 			break;
