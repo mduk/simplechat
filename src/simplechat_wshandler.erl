@@ -147,15 +147,19 @@ websocket_handle( { text, Msg }, Req, State ) ->
 				{ _, pending } -> 
 					{ ok, Req, State, hibernate };
 				
-				{ _, { error, Reason } } -> 
+				{ Packet, { error, Reason } } -> 
 					Reply = simplechat_protocol:encode( { error, io_lib:format(
-						"Client Error: ~p", [ Reason ]
+						"A client error occured.~n"
+						"Call was: ~p~n"
+						"Error was: ~p", [ Packet, Reason ]
 					) } ),
 					{ reply, { text, Reply }, Req, State, hibernate };
 					
-				Any ->
+				{ Packet, Result } ->
 					Reply = simplechat_protocol:encode( { error, io_lib:format(
-						"Hmmmm: ~p", [ Any ]
+						"Unknown client response.~n"
+						"Call was: ~p~n"
+						"Client returned: ~p", [ Packet, Result ]
 					) } ),
 					{ reply, { text, Reply }, Req, State, hibernate }
 			end
@@ -203,7 +207,6 @@ websocket_info( Msg = { room_event, _, _ }, Req, State ) ->
 %-------------------------------------------------------------------------------
 websocket_info( { send, Data }, Req, State ) ->
 	{ reply, { text, Data }, Req, State, hibernate };
-
 %-------------------------------------------------------------------------------
 % Close the socket
 %-------------------------------------------------------------------------------
