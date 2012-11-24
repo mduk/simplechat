@@ -132,7 +132,7 @@ $( function() {
 	    if ( e.keyCode == 13 ) {
 			console.log( "enter was pressed! going to click..." );
 			console.log(  pane.find( '.msg-input button' ) );
-			pane.find( '.msg-input button.btn-send' ).click();
+			pane.find( '.msg-input button' ).click();
 	    }
 	} );
 
@@ -237,7 +237,7 @@ $( function() {
 			<div class="tab-pane" id="">
 				<div class="row">
 					<div class="span12">
-						<div class="input-append msg-input">
+						<div class="input-append">
 							<input class="span10" type="text" name="topic" style="min-height: 30px;"/>
 							<button class="btn" style="min-height: 30px;"><i class="icon-lock"></i></button>
 							<button class="btn"><i class="icon-edit"></i> Set Topic</button>
@@ -250,9 +250,9 @@ $( function() {
 					<div class="span12">
 						<ul class="media-list stream"></ul>
 						<hr/>
-						<div class="container input-append msg-input">
+						<div class="input-append msg-input">
 							<input type="text" name="body" style="min-height: 30px; width: 90%;"/>
-							<button class="btn btn-primary btn-send">Send</button>
+							<button class="btn btn-primary">Send</button>
 						</div>
 					</div>
 					<!--div class="span3">
