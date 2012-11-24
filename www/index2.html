@@ -6,9 +6,17 @@
 		<script type="text/javascript" src="vendor/bootstrap/js/bootstrap.js"></script>
 	</head>
 	<body>
-		<style type="text/css"></style>
+		<style type="text/css">
+		.event.joined,
+		.event.parted {
+			text-align: center;
+			font-style: italic;
+			color: #999;
+		}
+		</style>
 		<script type="text/javascript">
 var socket;
+var nick;
 
 function handle( p ) {
 	switch ( p.type ) {
@@ -17,22 +25,40 @@ function handle( p ) {
 			break;
 			
 		case 'joined':
-			if ( p.source == "client" )
-			{
+			console.log(p);
+			if ( p.source == "client" ) {
+				var room = p.room.name;
+				$('#modal-join').modal('hide');
+				newTab( tabId( room ), room );
+				switchTab( tabId( room ) );
+				socket.send( JSON.stringify( {
+					type: 'member_list',
+					room: room
+				} ) );
 				break;
 			}
 			
-			$('#modal-join').modal('hide');
-			$('#rooms .nav-tabs').append('<li><a data-toggle="tab" href="#' + p.room + '">' + p.room +'</a></li>');
-			$('#rooms .tab-content').append('<div class="tab-pane" id="' + p.room + '"><ul class="media-list"></ul></div>');
-			switchTab( p.room );
+			var html = $('<li class="event joined">' + p.client + ' joined</li>');
+			$('#' + tabId( p.room ) + ' ul.stream').append( html );
 			break;
-		
+			
+		case 'parted':
+			var html = $('<li class="event joined">' + p.client + ' parted</li>');
+			$('#' + tabId( p.room ) + ' ul.stream').append( html );
+			break;
+			
 		case 'message':
 			var html = $('#template-room-message').children().clone();
 			html.find('h4').html( p.client );
 			html.find('p').html( p.body );
-			$('#wiggle ul').append( html );
+			$('#' + tabId( p.room ) + ' ul.stream').append( html );
+			break;
+		
+		case 'error':
+			var modal = $('#modal-error');
+			modal.find('h3').html(p.title);
+			modal.find('pre').html(p.message);
+			modal.modal('show');
 			break;
 			
 		default:
@@ -42,8 +68,22 @@ function handle( p ) {
 	}	
 }
 
+function tabId( id ) {
+	return id.toLowerCase().replace( /\s/g, "" );
+}
+
 function switchTab( tab ) {
 	$('#rooms .nav-tabs a[href="#' + tab + '"]').click()
+}
+
+function newTab( id, label ) {
+	var tab = '<li><a data-toggle="tab" href="#' + id + '" data-toggle="tab">' + label +'</a></li>';
+		
+	var pane = $('#template-room-pane').children().clone();
+	pane.attr( "id", id );
+	
+	$('#rooms .nav-tabs').append( tab );
+	$('#rooms .tab-content').append( pane );
 }
 
 $( function() {
@@ -51,9 +91,8 @@ $( function() {
 	// Modal: Connect
 	$('#modal-connect-btn').on( 'click', function( e ) {
 		
-		var
-			nick = $('#modal-connect-nickname').val(),
-			pass = $('#modal-connect-password').val();
+		nick = $('#modal-connect-nickname').val();
+		var pass = $('#modal-connect-password').val();
 		
 		socket = new WebSocket('ws://localhost:8000/');
 		
@@ -100,6 +139,11 @@ $( function() {
 		} ) );
 	} );
 	
+	// Modal: Error
+	$( '#modal-error-btn' ).on( 'click', function( e ) {
+		$( '#modal-error' ).modal( 'hide' );
+	} );
+	
 // ---------------------------------------------------------------------------------
 	
 	$('#modal-connect').modal('show');
@@ -117,24 +161,95 @@ $( function() {
 							<a href="#modal-join" role="button" class="btn" data-toggle="modal">&plus;</a>
 						</div>
 					</li>
-					<li class="active"><a href="#debug" data-toggle="tab"><i class="icon-wrench"></i> Debug</a></li>
-					<li><a href="#more" data-toggle="tab"><i class="icon-th-list"></i> More</a></li>
+					<li class="active"><a href="#home" data-toggle="tab"><i class="icon-home"></i> Home</a></li>
+					<li><a href="#debug" data-toggle="tab"><i class="icon-wrench"></i> Debug</a></li>
 				</ul>
 	
 				<div class="tab-content">
-					<div class="tab-pane active" id="debug">
+					<div class="tab-pane active" id="home">
+						<div class="well"><p>Foshizzle</p></div>
+					</div>
+					<div class="tab-pane" id="debug">
 						<div class="well">
 							<a href="#modal-connect" role="button" class="btn" data-toggle="modal">Connect</a>
 							<a href="#modal-join" role="button" class="btn" data-toggle="modal">Join Room</a>
 						</div>
 					</div>
-					<div class="tab-pane" id="more">
-						<div class="well"><p>Foshizzle</p></div>
-					</div>
 				</div>
 			
 			</div>
 			
+		</div>
+		
+		<!-- Template: Room Tab Pane -->
+		<div id="template-room-pane" style="display:none;">
+			<div class="tab-pane" id="">
+				<div class="row">
+					<div class="span9">
+						<div class="well">
+						
+							<ul class="media-list stream">
+								<li class="media">
+									<hr/>
+								</li>
+							</ul>
+							
+							<div class="media-list member-list">
+								<div class="media">
+									<hr/>
+									<a class="pull-left" href="#"><img class="media-object" src="http://placehold.it/64x64"></a>
+									<div class="media-body">
+										<textarea name="body" class="input-block-level"></textarea>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="span3">
+						<ul class="media-list user-list">
+							<li class="media">
+								<a class="pull-left" href="#"><img class="media-object" src="http://placehold.it/24x24"></a>
+								<div class="media-body">
+									<h4 class="media-heading"><a href="#">User 1</a></h4>
+								</div>
+							</li>
+							<li class="media">
+								<a class="pull-left" href="#"><img class="media-object" src="http://placehold.it/24x24"></a>
+								<div class="media-body">
+									<h4 class="media-heading"><a href="#">User 2</a></h4>
+								</div>
+							</li>
+						</ul>
+					</div>
+				</div>
+				
+			</div>
+		</div>
+		
+		<!-- Template: Room Message -->
+		<div id="template-room-message" style="display:none;">
+			<li class="media">
+				<hr/>
+				<a class="pull-left" href="#"><img class="media-object" src="http://placehold.it/64x64"></a>
+				<div class="media-body">
+					<h4 class="media-heading">Author</h4>
+					<p>Foobar</p>
+				</div>
+			</li>
+		</div>
+		
+		<!-- Modal: Error -->
+		<div id="modal-error" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+				<h3>Error</h3>
+			</div>
+			<div class="modal-body">
+				<pre>Error message...</pre>
+			</div>
+			<div class="modal-footer">
+				<button class="btn btn-primary" id="modal-error-btn">Well that sucks</button>
+			</div>
 		</div>
 		
 		<!-- Modal: Connect -->
@@ -174,16 +289,6 @@ $( function() {
 			<div class="modal-footer">
 				<button class="btn btn-primary" id="modal-join-btn">Join Room</button>
 			</div>
-		</div>
-		
-		<div id="template-room-message" style="display:none;">
-			<li class="media">
-				<a class="pull-left" href="#"><img class="media-object" src="http://placehold.it/64x64"></a>
-				<div class="media-body">
-					<h4 class="media-heading">Author</h4>
-					<p>Foobar</p>
-				</div>
-			</li>
 		</div>
 				
 	</body>
