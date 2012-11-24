@@ -117,8 +117,6 @@ websocket_handle( { text, Msg }, Req, State ) ->
 	
 	case Packet of 
 		{ ident, Nick, Password } ->
-			io:format( ">>> CLIENT WANTS TO AUTH WITH ~p~n", [ {Nick,Password} ] ),
-			
 			case simplechat_auth:ident( Nick, Password ) of
 				{ ok, Pid } ->
 					simplechat_client:add_handler( Pid, simplechat_websocket_client_handler, self() ),
