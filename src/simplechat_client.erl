@@ -152,7 +152,7 @@ handle_call( { part, Room }, _From, State ) ->
 %-------------------------------------------------------------------------------
 handle_call( { member_list, Room }, _, State ) ->
 	case room_call( Room, member_list, State ) of
-		{ ok, Result } -> { reply, Result, State };
+		{ ok, _ } -> { reply, pending, State };
 		Error          -> { reply, Error, State }
 	end;
 %-------------------------------------------------------------------------------
