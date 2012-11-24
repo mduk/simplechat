@@ -137,7 +137,9 @@ $( function() {
 	} );
 
 	// Modal: Connect
-	$('#modal-connect-btn').on( 'click', function( e ) {
+	
+	$( '#modal-connect-form' ).bind( 'submit', function( e ) {
+		e.preventDefault();
 		
 		nick = $('#modal-connect-nickname').val();
 		var pass = $('#modal-connect-password').val();
@@ -306,23 +308,23 @@ $( function() {
 		
 		<!-- Modal: Connect -->
 		<div id="modal-connect" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-			<div class="modal-header">
-				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
-				<h3>Connect</h3>
-			</div>
-			<div class="modal-body">
-				<form class="form-horizontal">
+			<form id="modal-connect-form">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+					<h3>Connect</h3>
+				</div>
+				<div class="modal-body">
 					<div class="control-group">
 						<input class="input-block-level" type="text" id="modal-connect-nickname" placeholder="Nickname">
 					</div>
 					<div class="control-group">
 						<input class="input-block-level" type="password" id="modal-connect-password" placeholder="Password">
 					</div>
-				</form>
-			</div>
-			<div class="modal-footer">
-				<button class="btn btn-primary" id="modal-connect-btn">Connect</button>
-			</div>
+				</div>
+				<div class="modal-footer">
+					<input type="submit" class="btn btn-primary" id="modal-connect-btn" value="Connect"/>
+				</div>
+			</form>
 		</div>
 		
 		<!-- Modal: Nick -->
