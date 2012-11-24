@@ -20,11 +20,11 @@
 % init/3
 % ==============================================================================
 init( { _Any, http }, Req, [] ) ->
-        case cowboy_http_req:header( 'Upgrade', Req ) of
-                { undefined, Req2 } -> { ok, Req2, undefined };
-                { <<"websocket">>, _Req2 } -> { upgrade, protocol, cowboy_http_websocket };
-                { <<"WebSocket">>, _Req2 } -> { upgrade, protocol, cowboy_http_websocket }
-        end.
+	case cowboy_http_req:header( 'Upgrade', Req ) of
+		{ undefined, Req2 } -> { ok, Req2, undefined };
+		{ <<"websocket">>, _Req2 } -> { upgrade, protocol, cowboy_http_websocket };
+		{ <<"WebSocket">>, _Req2 } -> { upgrade, protocol, cowboy_http_websocket }
+	end.
 
 % ==============================================================================
 % handle/2
