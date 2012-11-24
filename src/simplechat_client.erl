@@ -16,6 +16,7 @@
 	joined_rooms/1, 
 	join/2, 
 	part/2, 
+	member_list/2,
 	quit/1 
 ] ).
 
@@ -52,6 +53,9 @@ join( Client, Room ) ->
 
 part( Client, Room ) ->
 	gen_server:call( Client, { part, Room } ).
+
+member_list( Client, Room ) ->
+	gen_server:call( Client, { member_list, Room } ).
 
 quit( Client ) ->
 	gen_server:call( Client, quit ). 
@@ -141,24 +145,21 @@ handle_call( { join, Room }, _From, State ) ->
 % Part Room
 %-------------------------------------------------------------------------------
 handle_call( { part, Room }, _From, State ) ->
-	case proplists:lookup( Room, State#state.rooms ) of
-	
-		% Present in room, part.
-		{ Room, RoomPid } ->
-		
-			% Part room
-			simplechat_room:part( RoomPid ),
-			
-			{ reply, pending, State };
-				
-		% Not present in room, ok.
-		none ->
-			{ reply, ok, State }
+	room_call( Room, part, State ),
+	{ reply, ok, State };
+%-------------------------------------------------------------------------------
+% Get a room member list
+%-------------------------------------------------------------------------------
+handle_call( { member_list, Room }, _, State ) ->
+	case room_call( Room, member_list, State ) of
+		{ ok, Result } -> { reply, Result, State };
+		Error          -> { reply, Error, State }
 	end;
 %-------------------------------------------------------------------------------
 % Set a room topic
 %-------------------------------------------------------------------------------
 handle_call( { set_topic, Room, Topic }, _From, State ) ->
+	
 	case proplists:lookup( Room, State#state.rooms ) of
 		
 		{ Room, RoomPid } ->
@@ -309,3 +310,19 @@ part_all( [ { _, Pid } | T ] ) ->
 	part_all( T );
 part_all( [] ) ->
 	ok.
+	
+%===============================================================================
+% Room Call
+%===============================================================================
+room_call( Room, Function, State ) when is_atom( Function ) ->
+	room_call( Room, { Function, [] }, State );
+room_call( Room, { Function, Args }, State ) when is_atom( Function ), is_list( Args ) ->
+	case proplists:lookup( Room, State#state.rooms ) of
+		
+		{ Room, RoomPid } ->
+			apply( simplechat_room, Function, [ RoomPid | Args ] );
+			
+		none ->
+			{ error, not_present_in_room }
+			
+	end.
