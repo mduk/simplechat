@@ -71,10 +71,12 @@ function handle( p ) {
 			break;
 		
 		case 'error':
-			var modal = $('#modal-error');
-			modal.find('h3').html(p.title);
-			modal.find('pre').html(p.message);
-			modal.modal('show');
+			console.log( "ERROR!" );
+			console.log( p );
+			//var modal = $('#modal-error');
+			//modal.find('h3').html(p.title);
+			//modal.find('pre').html(p.message);
+			//modal.modal('show');
 			break;
 			
 		default:
