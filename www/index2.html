@@ -33,18 +33,15 @@ function handle( p ) {
 			socket.send( JSON.stringify( {
 				type: 'room_list'
 			} ) );
+			socket.send( JSON.stringify( {
+				type: 'subscribe',
+				stream: 'room_list'
+			} ) );
 			break;
 		
 		case 'room_info':
-			$( '#room-list-' + tabId( p.name ) ).remove();
-			
-			var html = '<tr id="room-list-' + tabId( p.name ) + '">'
-				+ '<td>' + p.name + '</td>'
-				+ '<td>' + p.topic + '</td>'
-				+ '<td>' + p.members + '</td>'
-				+ '<td><button class="btn pull-right">Join</button></td>'
-				+ '</tr>';
-			$( '#room-list tbody' ).append( html );
+			var id = tabId( p.name );
+			updateRoomList( p );
 			break;
 			
 		case 'joined':
@@ -123,6 +120,20 @@ function newTab( id, label ) {
 	$('#rooms .tab-content').append( pane );
 }
 
+function updateRoomList( info ) {
+	var id = tabId( info.name );
+	
+	$( '#room-list-' + id ).remove();
+	
+	var entry = $('#template-room-list-entry').find('tr').clone(true);
+	entry.attr( "id", 'room-list-' + id );
+	entry.find( '.name' ).html( info.name );
+	entry.find( '.topic' ).html( info.topic );
+	entry.find( '.members' ).html( info.members );
+	
+	$( '#room-list tbody' ).append( entry );	
+}
+
 $( function() {
 
 	// Tabs - Hide notification count
@@ -132,6 +143,27 @@ $( function() {
 			previous_tabe = e.relatedTarget;
 		
 		$( activated_tab ).find('.badge').hide();
+	} );
+	
+	// Tabs - Subscribe/Unsubscribe to room list
+	$( '#rooms .nav-tabs' ).on( 'shown', function (e) {
+		var
+			activated_tab = $( e.target ),
+			previous_tabe = $( e.relatedTarget );
+		
+		if ( activated_tab.attr( 'href' ) == '#home' ) {
+			socket.send( JSON.stringify( { 
+				type: 'subscribe',
+				stream: 'room_list'
+			} ) );
+		}
+		
+		if ( previous_tab.attr( 'href' ) == '#home' ) {
+			socket.send( JSON.stringify( {
+				type: 'unsubscribe',
+				stream: 'room_list',
+			} ) );
+		}
 	} );
 
 	// Template: Room Tab Pane
@@ -259,6 +291,18 @@ $( function() {
 				</div>
 				
 			</div>
+		</div>
+		
+		<!-- Template: Room List Entry -->
+		<div id="template-room-list-entry" style="display:none;">
+			<table>
+				<tr id="">
+					<td class="name">Name</td>
+					<td class="topic">Topic</td>
+					<td class="members">42</td>
+					<td><button class="btn pull-right btn-join">Join</button></td>
+				</tr>
+			</table>
 		</div>
 		
 		<!-- Template: Room Tab Pane -->
