@@ -14,6 +14,18 @@ decode( { ident, Props } ) ->
 	{ _, Password } = proplists:lookup( <<"password">>, Props ),
 	{ ident, Name, Password };
 %-------------------------------------------------------------------------------
+% Subscribe to a stream
+%-------------------------------------------------------------------------------
+decode( { subscribe, Props } ) ->
+	Stream = proplists:get_value( <<"stream">>, Props ),
+	{ subscribe, Stream };
+%-------------------------------------------------------------------------------
+% Unsubscribe from a stream
+%-------------------------------------------------------------------------------
+decode( { unsubscribe, Props } ) ->
+	Stream = proplists:get_value( <<"stream">>, Props ),
+	{ unsubscribe, Stream };
+%-------------------------------------------------------------------------------
 % Parse a 'room_list' message
 %-------------------------------------------------------------------------------
 decode( { room_list, _ } ) ->

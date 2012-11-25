@@ -1,5 +1,7 @@
 -module( simplechat_wshandler ).
 
+-include("simplechat.hrl").
+
 % This module mediates between the Websocket connection
 % and the client processes. It handles translating the
 % Json messages into client calls and vice versa.
@@ -116,6 +118,8 @@ websocket_handle( { text, Msg }, Req, State ) ->
 	Packet = simplechat_protocol:decode( Msg ),
 	
 	case Packet of 
+	
+		% Ident to a client process
 		{ ident, Nick, Password } ->
 			case simplechat_auth:ident( Nick, Password ) of
 				{ ok, Pid } ->
@@ -126,7 +130,8 @@ websocket_handle( { text, Msg }, Req, State ) ->
 					Reply = simplechat_protocol:encode( { error, Reason } ),
 					{ reply, { text, Reply }, Req, State }
 			end;
-			
+		
+		% Retrieve the room list	
 		room_list ->
 			Ws = self(),
 			lists:foreach( fun( Info ) ->
@@ -135,6 +140,16 @@ websocket_handle( { text, Msg }, Req, State ) ->
 					Ws ! { send, list_to_binary( Message ) }
 				end )
 			end, simplechat_roomlist:get_list() ),
+			{ ok, Req, State, hibernate };
+		
+		% Subscribe to the room list
+		{ subscribe, <<"room_list">> } ->
+			simplechat_roomlist:subscribe(),
+			{ ok, Req, State, hibernate };
+		
+		% Unsubscribe from the room list
+		{ unsubscribe, <<"room_list">> } ->
+			simplechat_roomlist:unsubscribe(),
 			{ ok, Req, State, hibernate };
 			
 		Packet ->
@@ -221,6 +236,12 @@ websocket_info( Msg = { client_event, _ }, Req, State ) ->
 % Encode and send a room event
 %-------------------------------------------------------------------------------
 websocket_info( Msg = { room_event, _, _ }, Req, State ) ->
+	send( State, Msg ),
+	{ ok, Req, State, hibernate };
+%-------------------------------------------------------------------------------
+% Encode and send a room info record
+%-------------------------------------------------------------------------------
+websocket_info( Msg, Req, State ) when is_record( Msg, room_info ) ->
 	send( State, Msg ),
 	{ ok, Req, State, hibernate };
 %-------------------------------------------------------------------------------
