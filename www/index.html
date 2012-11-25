@@ -1,59 +1,430 @@
 <html>
 	<head>
-		<link rel="stylesheet" type="text/css" href="/css/icons.css">
-		<link rel="stylesheet" type="text/css" href="vendor/extjs/resources/css/ext-all.css">
-		<script type="text/javascript" src="vendor/extjs/ext-all-debug.js"></script>
-		<script type="text/javascript" src="controller/Client.js"></script>
-		<script type="text/javascript" src="controller/Room.js"></script>
-		<script type="text/javascript" src="view/room/List.js"></script>
-		<script type="text/javascript" src="view/room/ListWindow.js"></script>
-		<script type="text/javascript" src="view/room/Chat.js"></script>
+		<link rel="stylesheet" type="text/css" href="css/icons.css">
+		<link rel="stylesheet" type="text/css" href="vendor/bootstrap/css/bootstrap.css">
+		<script type="text/javascript" src="vendor/jquery/jquery-1.8.3.js"></script>
+		<script type="text/javascript" src="vendor/bootstrap/js/bootstrap.js"></script>
+		<script type="text/javascript" src="js/md5.js"></script>
 	</head>
 	<body>
 		<style type="text/css">
-.room-event {
-	padding: 0.5em;
-	border: 0;
-	border-bottom: 1px grey dotted;
-}
-
-.room-event span {
-	font-weight: bold;
-}
-
-.room-event.joined {
-	text-align: center;
-}
-
-.room-event.parted {
-	text-align: center;
-}
-
-.room-event.topic-changed {
-	text-align: center;
-	font-style: italic;
-}
-
-.room-event.message .body {
-	padding-left: 1em;
-}
-
-.room-event.message span:after,
-.room-event.topic-changed span:after {
-	content: ": ";
-}
+		.event.joined,
+		.event.parted {
+			text-align: center;
+			font-style: italic;
+			color: #999;
+		}
+		button {
+			min-height: 30px;
+			vertical-align: middle;
+		}
 		</style>
 		<script type="text/javascript">
-Ext.application( {
-	name: 'SimpleChat',
-	controllers: [ 'Client', 'Room' ],
-	launch: function() 
-	{
-		this.getController( 'Client' )
-			.roomListWindow()
-			.show();
-	}
+var socket;
+var nick;
+
+//simplechat_room:join(P,<<"daniel_kendell@macdan.net">>).
+//simplechat_room:say(P,<<"Hello World?">>).
+
+function handle( p ) {
+	switch ( p.type ) {
+		case 'welcome':
+			$('#modal-connect').modal('hide');
+			socket.send( JSON.stringify( {
+				type: 'room_list'
+			} ) );
+			socket.send( JSON.stringify( {
+				type: 'subscribe',
+				stream: 'room_list'
+			} ) );
+			break;
+		
+		case 'room_info':
+			var id = tabId( p.name );
+			updateRoomList( p );
+			break;
+			
+		case 'joined':
+			console.log(p);
+			if ( p.source == "client" ) {
+				var room = p.room.name;
+				
+				$('#modal-join').modal('hide');
+				
+				var joinBtn = $('#room-list button[data-room="' + room + '"]');
+				joinBtn.addClass( 'btn-danger' );
+				joinBtn.html( '<i class="icon-remove"></i> Part' );
+				joinBtn.attr( 'data-state', 'part' );
+				
+				newTab( tabId( room ), room );
+				switchTab( tabId( room ) );
+				
+				socket.send( JSON.stringify( {
+					type: 'member_list',
+					room: room
+				} ) );
+				break;
+			}
+			
+			var html = $('<li class="event joined">' + p.client + ' joined</li>');
+			$('#' + tabId( p.room ) + ' ul.stream').append( html );
+			break;
+			
+		case 'parted':
+			if ( p.source == 'client' ) {
+				var btn = $( '#room-list-' + tabId( p.room ) + ' button' );
+				btn.toggleClass( 'btn-danger' );
+				btn.html( 'Join' );
+				deleteTab( tabId( p.room ) );
+				break;
+			}
+			var html = $('<li class="event joined">' + p.client + ' parted</li>');
+			$('#' + tabId( p.room ) + ' ul.stream').append( html );
+			break;
+			
+		case 'message':
+			var tab = $('.nav_tabs a[href="#' + tabId( p.room ) + '"]');
+			var pane = $('#' + tabId( p.room ) );
+			
+			var html = $('#template-room-message').children().clone();
+			html.find( 'img' ).attr( { 
+				src: 'http://www.gravatar.com/avatar/' 
+					+ MD5( p.client ) 
+					+ '?default=identicon&s=32'
+			} );
+			html.find( 'h4'  ).html( p.client );
+			html.find( 'p'   ).html( p.body );
+			pane.find( 'ul.stream' ).append( html );
+			break;
+		
+		case 'error':
+			console.log( "ERROR!" );
+			console.log( p );
+			//var modal = $('#modal-error');
+			//modal.find('h3').html(p.title);
+			//modal.find('pre').html(p.message);
+			//modal.modal('show');
+			break;
+			
+		default:
+			console.log( 'Unhandled Message!' );
+			console.log( p );
+			break;
+	}	
+}
+
+function tabId( id ) {
+	return id.toLowerCase().replace( /\s/g, "" );
+}
+
+function switchTab( tab ) {
+	$('#rooms .nav-tabs a[href="#' + tab + '"]').click()
+}
+
+function newTab( id, label ) {
+	var tab = '<li><a data-toggle="tab" href="#' 
+		+ id 
+		+ '" data-toggle="tab">' 
+		+ label 
+		+ '  <span class="badge">1</span></a></li>';
+		
+	var pane = $('#template-room-pane').children().clone(true);
+	pane.attr( "id", id );
+	
+	$('#rooms .nav-tabs').append( tab );
+	$('#rooms .tab-content').append( pane );
+}
+
+function deleteTab( id ) {
+	$('#rooms .nav-tabs a[href="#' + id + '"]').parent( 'li' ).remove();
+	$('#' + id + '').remove();
+}
+
+function updateRoomList( info ) {
+	var id = tabId( info.name );
+	
+	$( '#room-list-' + id ).remove();
+	
+	var entry = $('#template-room-list-entry').find('tr').clone(true);
+	entry.attr( 'id', 'room-list-' + id );
+	entry.find( '.name' ).html( info.name );
+	entry.find( '.topic' ).html( info.topic );
+	entry.find( '.members' ).html( info.members );
+	entry.find( 'button' ).attr( 'data-room', info.name );
+	entry.find( 'button' ).attr( 'data-state', 'join' );
+	
+	$( '#room-list tbody' ).append( entry );	
+}
+
+$( function() {
+
+	// Tabs - Hide notification count
+	$( '#rooms .nav-tabs' ).on( 'shown', function (e) {
+		var activated_tab = $( e.target );
+		activated_tab.find('.badge').hide();
+	} );
+	
+	// Tabs - Subscribe/Unsubscribe to room list
+	$( '#rooms .nav-tabs' ).on( 'shown', function (e) {
+		var
+			activated_tab = $( e.target ),
+			previous_tab = $( e.relatedTarget );
+		
+		if ( activated_tab.attr( 'href' ) == '#home' ) {
+			socket.send( JSON.stringify( { 
+				type: 'subscribe',
+				stream: 'room_list'
+			} ) );
+		}
+		
+		if ( previous_tab.attr( 'href' ) == '#home' ) {
+			socket.send( JSON.stringify( {
+				type: 'unsubscribe',
+				stream: 'room_list',
+			} ) );
+		}
+	} );
+	
+	// Room List - Join button
+	$( '#template-room-list-entry button' ).on( 'click', function( e ) {
+		var 
+			btn = $( e.srcElement ),
+			cmd = {
+				type: 'join',
+				room: btn.attr( 'data-room' )
+			};
+		
+		if ( btn.attr( 'data-state' ) == 'part' )
+		{
+			cmd = {
+				type: 'part',
+				room: btn.attr( 'data-room' )
+			};
+		}
+		
+		socket.send( JSON.stringify( cmd ) );
+	} );
+
+	// Template: Room Tab Pane
+	var pane = $('#template-room-pane');
+	pane.find( '.msg-input button' ).on( 'click', function( e ) {
+		console.log( 'send was clicked');
+		
+		var activeTab = $('#rooms .tab-pane.active');
+		var room = activeTab.attr('id');
+		
+		var input = activeTab.find('input[name=body]');
+		var message = input.val();
+		input.val( '' );
+		
+		socket.send( JSON.stringify( {
+			type: 'say',
+			room: room,
+			message: message
+		} ) );
+	} );
+	pane.find( '.msg-input input' ).keyup( function( e ) {
+	    if ( e.keyCode == 13 ) {
+			console.log( "enter was pressed! going to click..." );
+			console.log(  pane.find( '.msg-input button' ) );
+			pane.find( '.msg-input button' ).click();
+	    }
+	} );
+
+	// Modal: Connect
+	
+	$( '#modal-connect-form' ).bind( 'submit', function( e ) {
+		e.preventDefault();
+		
+		nick = $('#modal-connect-nickname').val();
+		var pass = $('#modal-connect-password').val();
+		
+		socket = new WebSocket('ws://localhost:8000/');
+		
+		socket.onopen = function()
+		{
+			console.log( 'WebSocket Opened' );
+			
+			socket.send( JSON.stringify( {
+				type: "ident",
+				name: nick,
+				password: pass
+			} ) );
+		};
+		
+		socket.onmessage = function( wsMsg )
+		{
+			console.log( 'Recv: ' + wsMsg.data );
+		
+			var msg = JSON.parse( wsMsg.data );
+			handle( msg );
+		};
+		
+		socket.onerror = function( e )
+		{
+			console.log( 'Websocket error!' );
+			console.log( e );
+		};
+		
+		socket.onclose = function()
+		{
+			console.log( 'WebSocket Closed' );
+		};
+	} );
+	
+	// Modal: Join
+	$( '#modal-join-form' ).on( 'submit', function( e ) {
+		e.preventDefault();
+		
+		var room = $('#modal-join-room').val();
+		$('#modal-join-room').val('');
+		
+		socket.send( JSON.stringify( {
+			type: "join",
+			room: room
+		} ) );
+	} );
+	
+	// Modal: Error
+	$( '#modal-error-btn' ).on( 'click', function( e ) {
+		$( '#modal-error' ).modal( 'hide' );
+	} );
+	
+// ---------------------------------------------------------------------------------
+	
+	$('#modal-connect').modal('show');
+	//newTab( "myroom", "My Room" );
+	//switchTab( "myroom" );
+	
 } );
 		</script>
+		
+		<div class="container" style="margin-top: 10px;">
+			<div class="row">
+				<div class="span12" id="rooms">
+				
+					<ul class="nav nav-tabs">
+						<li class="pull-right">
+							<div class="btn-group">
+								<a href="#modal-join" role="button" class="btn" data-toggle="modal">&plus;</a>
+							</div>
+						</li>
+						<li class="active"><a href="#home" data-toggle="tab"><i class="icon-home"></i> Home</a></li>
+					</ul>
+		
+					<div class="tab-content">
+						<div class="tab-pane active" id="home">
+							<table id="room-list" class="table table-striped">
+								<thead>
+									<tr>
+										<th>Room</th>
+										<th>Topic</th>
+										<th>Members</th>
+										<th>&nbsp;</th>
+								</thead>
+								<tbody></tbody>
+							</table>
+						</div>
+					</div>
+				
+				</div>
+				
+			</div>
+		</div>
+		
+		<!-- Template: Room List Entry -->
+		<div id="template-room-list-entry" style="display:none;">
+			<table>
+				<tr id="">
+					<td class="name">Name</td>
+					<td class="topic">Topic</td>
+					<td class="members">42</td>
+					<td><button class="btn pull-right btn-join" data-room="" data-state="">Join</button></td>
+				</tr>
+			</table>
+		</div>
+		
+		<!-- Template: Room Tab Pane -->
+		<div id="template-room-pane" style="display:none;">
+			<div class="tab-pane" id="">
+				<div class="row">
+					<div class="span12">
+						<ul class="media-list stream"></ul>
+						<hr/>
+						<div class="input-append msg-input">
+							<input type="text" name="body" style="min-height: 30px; width: 90%;"/>
+							<button class="btn btn-primary">Send</button>
+						</div>
+					</div>
+				</div>
+				
+			</div>
+		</div>
+		
+		<!-- Template: Room Message -->
+		<div id="template-room-message" style="display:none;">
+			<li class="media">
+				<hr/>
+				<a class="pull-left" href="#"><img class="media-object" src="http://placehold.it/64x64"></a>
+				<div class="media-body">
+					<h4 class="media-heading">Author</h4>
+					<p>Foobar</p>
+				</div>
+			</li>
+		</div>
+		
+		<!-- Modal: Error -->
+		<div id="modal-error" class="modal hide" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+				<h3>Error</h3>
+			</div>
+			<div class="modal-body">
+				<pre>Error message...</pre>
+			</div>
+			<div class="modal-footer">
+				<button class="btn btn-primary" id="modal-error-btn">Well that sucks</button>
+			</div>
+		</div>
+		
+		<!-- Modal: Connect -->
+		<div id="modal-connect" class="modal hide" tabindex="-1" role="dialog">
+			<form id="modal-connect-form">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">x</button>
+					<h3>Connect</h3>
+				</div>
+				<div class="modal-body">
+					<div class="control-group">
+						<input class="input-block-level" type="text" id="modal-connect-nickname" placeholder="Nickname">
+					</div>
+					<div class="control-group">
+						<input class="input-block-level" type="password" id="modal-connect-password" placeholder="Password">
+					</div>
+				</div>
+				<div class="modal-footer">
+					<input type="submit" class="btn btn-primary" id="modal-connect-btn" value="Connect"/>
+				</div>
+			</form>
+		</div>
+		
+		<!-- Modal: Join -->
+		<div id="modal-join" class="modal hide" tabindex="-1" role="dialog">
+			<form id="modal-join-form">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">x</button>
+					<h3>Join Room</h3>
+				</div>
+				<div class="modal-body">
+					<div class="control-group">
+						<input class="input-block-level" type="text" id="modal-join-room" placeholder="Room Name">
+					</div>
+				</div>
+				<div class="modal-footer">
+					<input type="submit" class="btn btn-primary" id="modal-join-btn" value="Join Room"/>
+				</div>
+			</form>
+		</div>
+				
 	</body>
 </html>
