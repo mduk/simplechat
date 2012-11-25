@@ -1,6 +1,6 @@
 # SimpleChat
 
-Websocket chatroom with an Erlang back end and ExtJS 4 front end.
+Websocket chatroom with an Erlang back end and Bootstrap-based front end.
 Primarily a learning exercise for me.
 
 ## Installation and Usage
