@@ -136,15 +136,23 @@ websocket_handle( { text, Msg }, Req, State ) ->
 				{ _, ok } -> 
 					{ ok, Req, State, hibernate };
 				
-				% Call successful with a result term
-				{ _, { ok, Result } } ->
-					Reply = simplechat_protocol:encode( Result ),
-					{ reply, { text, list_to_binary( Reply ) }, Req, State };
-				
 				% Call result pending
 				{ _, pending } -> 
 					{ ok, Req, State, hibernate };
 				
+				% Call successful with a result term
+				%
+				% Spawn a helper to encode the result term and
+				% ping it back here. 
+				{ _, { ok, Result } } ->
+					Ws = self(),
+					spawn_link( fun() ->
+						Reply = simplechat_protocol:encode( Result ),
+						Ws ! { send, list_to_binary( Reply ) }
+					end ),
+					{ ok, Req, State, hibernate };
+				
+				% An explicit error occured
 				{ Packet, { error, Reason } } -> 
 					Reply = simplechat_protocol:encode( { error, io_lib:format(
 						"A client error occured.~n"
@@ -152,7 +160,8 @@ websocket_handle( { text, Msg }, Req, State ) ->
 						"Error was: ~p", [ Packet, Reason ]
 					) } ),
 					{ reply, { text, Reply }, Req, State, hibernate };
-					
+				
+				% Catch all
 				{ Packet, Result } ->
 					Reply = simplechat_protocol:encode( { error, io_lib:format(
 						"Unknown client response.~n"
