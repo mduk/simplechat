@@ -132,18 +132,19 @@ websocket_handle( { text, Msg }, Req, State ) ->
 			io:format( "Proxy calling: ~p~n", [ Packet ] ),
 			case simplechat_client:proxy_call( State#state.client_pid, Packet ) of
 				
-				% Call successful, no result to return
+				% Any successful result
 				{ _, ok } -> 
 					{ ok, Req, State, hibernate };
 				
-				% Call result pending
+				% Any result pending
 				{ _, pending } -> 
 					{ ok, Req, State, hibernate };
 				
-				% Call successful with a result term
-				%
-				% Spawn a helper to encode the result term and
-				% ping it back here. 
+				% Joined a room the client is already a member of
+				{ { join, _ }, { ok, _ } } ->
+					{ ok, Req, State, hibernate };
+				
+				% Any successful with a result term
 				{ _, { ok, Result } } ->
 					Ws = self(),
 					spawn_link( fun() ->
