@@ -1,0 +1,1 @@
+-record( room_info, { pid, name, topic, members } ).
