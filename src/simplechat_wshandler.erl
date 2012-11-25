@@ -127,6 +127,16 @@ websocket_handle( { text, Msg }, Req, State ) ->
 					{ reply, { text, Reply }, Req, State }
 			end;
 			
+		room_list ->
+			Ws = self(),
+			lists:foreach( fun( Info ) ->
+				spawn_link( fun() ->
+					Message = simplechat_protocol:encode( Info ),
+					Ws ! { send, list_to_binary( Message ) }
+				end )
+			end, simplechat_roomlist:get_list() ),
+			{ ok, Req, State, hibernate };
+			
 		Packet ->
 			% Parse the JSON payload into a tuple and call it on the client
 			io:format( "Proxy calling: ~p~n", [ Packet ] ),
