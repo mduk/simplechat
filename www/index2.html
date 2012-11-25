@@ -48,9 +48,17 @@ function handle( p ) {
 			console.log(p);
 			if ( p.source == "client" ) {
 				var room = p.room.name;
+				
 				$('#modal-join').modal('hide');
+				
+				var joinBtn = $('#room-list button[data-room="' + room + '"]');
+				joinBtn.addClass( 'btn-danger' );
+				joinBtn.html( '<i class="icon-remove"></i> Part' );
+				joinBtn.attr( 'data-state', 'part' );
+				
 				newTab( tabId( room ), room );
 				switchTab( tabId( room ) );
+				
 				socket.send( JSON.stringify( {
 					type: 'member_list',
 					room: room
@@ -63,6 +71,13 @@ function handle( p ) {
 			break;
 			
 		case 'parted':
+			if ( p.source == 'client' ) {
+				var btn = $( '#room-list-' + tabId( p.room ) + ' button' );
+				btn.toggleClass( 'btn-danger' );
+				btn.html( 'Join' );
+				deleteTab( tabId( p.room ) );
+				break;
+			}
 			var html = $('<li class="event joined">' + p.client + ' parted</li>');
 			$('#' + tabId( p.room ) + ' ul.stream').append( html );
 			break;
@@ -120,6 +135,11 @@ function newTab( id, label ) {
 	$('#rooms .tab-content').append( pane );
 }
 
+function deleteTab( id ) {
+	$('#rooms .nav-tabs a[href="#' + id + '"]').parent( 'li' ).remove();
+	$('#' + id + '').remove();
+}
+
 function updateRoomList( info ) {
 	var id = tabId( info.name );
 	
@@ -131,6 +151,7 @@ function updateRoomList( info ) {
 	entry.find( '.topic' ).html( info.topic );
 	entry.find( '.members' ).html( info.members );
 	entry.find( 'button' ).attr( 'data-room', info.name );
+	entry.find( 'button' ).attr( 'data-state', 'join' );
 	
 	$( '#room-list tbody' ).append( entry );	
 }
@@ -166,10 +187,22 @@ $( function() {
 	
 	// Room List - Join button
 	$( '#template-room-list-entry button' ).on( 'click', function( e ) {
-		socket.send( JSON.stringify( {
-			type: 'join',
-			room: $( e.srcElement ).attr( 'data-room' )
-		} ) );
+		var 
+			btn = $( e.srcElement ),
+			cmd = {
+				type: 'join',
+				room: btn.attr( 'data-room' )
+			};
+		
+		if ( btn.attr( 'data-state' ) == 'part' )
+		{
+			cmd = {
+				type: 'part',
+				room: btn.attr( 'data-room' )
+			};
+		}
+		
+		socket.send( JSON.stringify( cmd ) );
 	} );
 
 	// Template: Room Tab Pane
@@ -302,11 +335,11 @@ $( function() {
 		<!-- Template: Room List Entry -->
 		<div id="template-room-list-entry" style="display:none;">
 			<table>
-				<tr id="" data-room="">
+				<tr id="">
 					<td class="name">Name</td>
 					<td class="topic">Topic</td>
 					<td class="members">42</td>
-					<td><button class="btn pull-right btn-join">Join</button></td>
+					<td><button class="btn pull-right btn-join" data-room="" data-state="">Join</button></td>
 				</tr>
 			</table>
 		</div>
