@@ -6,7 +6,12 @@
 start( _StartType, _StartArgs ) ->
 	simplechat_auth:init(),
 	start_http(),
-	simplechat_sup:start_link().
+	
+	R = simplechat_sup:start_link(),
+	
+	simplechat_server_event:init(),
+	
+	R.
 
 stop( _State ) ->
 	ok.

@@ -67,11 +67,11 @@ quit( Client ) ->
 init( _ ) ->
 	{ ok, EventPid } = gen_event:start_link(), 
 	
-	% Add a handler for server level events - this needs to be moved so the
+	% Subscribe to server level events - this needs to be moved so the
 	% client can choose when to be subscribed and to what events. eg, when the
 	% server room list is visible, you would want to hear about changes in room
 	% state and when a room was opened or closed. 
-	gen_event:add_handler( simplechat_sup:event(), simplechat_handler, self() ),
+	simplechat_server_event:subscribe(),
 	
 	% Add a handler just to output events to the shell, for debugging
 	gen_event:add_handler( EventPid, simplechat_echohandler, "Client Event" ),
