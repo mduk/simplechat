@@ -10,6 +10,7 @@ start( _StartType, _StartArgs ) ->
 	R = simplechat_sup:start_link(),
 	
 	simplechat_server_event:init(),
+	simplechat_roomlist:init(),
 	
 	R.
 
