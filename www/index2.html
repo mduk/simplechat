@@ -126,10 +126,11 @@ function updateRoomList( info ) {
 	$( '#room-list-' + id ).remove();
 	
 	var entry = $('#template-room-list-entry').find('tr').clone(true);
-	entry.attr( "id", 'room-list-' + id );
+	entry.attr( 'id', 'room-list-' + id );
 	entry.find( '.name' ).html( info.name );
 	entry.find( '.topic' ).html( info.topic );
 	entry.find( '.members' ).html( info.members );
+	entry.find( 'button' ).attr( 'data-room', info.name );
 	
 	$( '#room-list tbody' ).append( entry );	
 }
@@ -138,18 +139,15 @@ $( function() {
 
 	// Tabs - Hide notification count
 	$( '#rooms .nav-tabs' ).on( 'shown', function (e) {
-		var
-			activated_tab = e.target,
-			previous_tabe = e.relatedTarget;
-		
-		$( activated_tab ).find('.badge').hide();
+		var activated_tab = $( e.target );
+		activated_tab.find('.badge').hide();
 	} );
 	
 	// Tabs - Subscribe/Unsubscribe to room list
 	$( '#rooms .nav-tabs' ).on( 'shown', function (e) {
 		var
 			activated_tab = $( e.target ),
-			previous_tabe = $( e.relatedTarget );
+			previous_tab = $( e.relatedTarget );
 		
 		if ( activated_tab.attr( 'href' ) == '#home' ) {
 			socket.send( JSON.stringify( { 
@@ -164,6 +162,14 @@ $( function() {
 				stream: 'room_list',
 			} ) );
 		}
+	} );
+	
+	// Room List - Join button
+	$( '#template-room-list-entry button' ).on( 'click', function( e ) {
+		socket.send( JSON.stringify( {
+			type: 'join',
+			room: $( e.srcElement ).attr( 'data-room' )
+		} ) );
 	} );
 
 	// Template: Room Tab Pane
@@ -296,7 +302,7 @@ $( function() {
 		<!-- Template: Room List Entry -->
 		<div id="template-room-list-entry" style="display:none;">
 			<table>
-				<tr id="">
+				<tr id="" data-room="">
 					<td class="name">Name</td>
 					<td class="topic">Topic</td>
 					<td class="members">42</td>
