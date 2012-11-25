@@ -190,6 +190,9 @@ websocket_info( { 'EXIT', Pid, Reason }, Req, State ) ->
 		"** Reason: ~p~n", 
 		[ self(), Pid, Reason ] 
 	),
+	self() ! { send, simplechat_protocol:encode( { error, io_lib:format(
+		"Helper process crashed!~n~n~p", [ Reason ]
+	) } ) },
 	{ ok, Req, State };
 %-------------------------------------------------------------------------------
 % Encode and send a server event
