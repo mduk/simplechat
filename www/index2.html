@@ -56,11 +56,18 @@ function handle( p ) {
 			break;
 			
 		case 'message':
+			var tab = $('.nav_tabs a[href="#' + tabId( p.room ) + '"]');
+			var pane = $('#' + tabId( p.room ) );
+			
 			var html = $('#template-room-message').children().clone();
-			html.find('h4').html( p.client );
-			html.find('img').attr( { src: 'http://www.gravatar.com/avatar/' + MD5( p.client ) + '?default=identicon&s=32' } );
-			html.find('p').html( p.body );
-			$('#' + tabId( p.room ) + ' ul.stream').append( html );
+			html.find( 'img' ).attr( { 
+				src: 'http://www.gravatar.com/avatar/' 
+					+ MD5( p.client ) 
+					+ '?default=identicon&s=32'
+			} );
+			html.find( 'h4'  ).html( p.client );
+			html.find( 'p'   ).html( p.body );
+			pane.find( 'ul.stream' ).append( html );
 			break;
 		
 		case 'error':
