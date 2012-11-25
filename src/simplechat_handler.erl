@@ -8,7 +8,7 @@ init( ClientPid ) ->
 
 handle_event( Event, ClientPid ) ->
 	io:format( "Relaying server event ~p to client ~p~n", [ Event, ClientPid ] ),
-	ClientPid ! Event,
+	ClientPid ! { server_event, Event },
 	{ ok, ClientPid }.
 	
 handle_call( _Msg, State ) ->
