@@ -30,6 +30,21 @@ function handle( p ) {
 	switch ( p.type ) {
 		case 'welcome':
 			$('#modal-connect').modal('hide');
+			socket.send( JSON.stringify( {
+				type: 'room_list'
+			} ) );
+			break;
+		
+		case 'room_info':
+			$( '#room-list-' + tabId( p.name ) ).remove();
+			
+			var html = '<tr id="room-list-' + tabId( p.name ) + '">'
+				+ '<td>' + p.name + '</td>'
+				+ '<td>' + p.topic + '</td>'
+				+ '<td>' + p.members + '</td>'
+				+ '<td><button class="btn pull-right">Join</button></td>'
+				+ '</tr>';
+			$( '#room-list tbody' ).append( html );
 			break;
 			
 		case 'joined':
@@ -224,18 +239,20 @@ $( function() {
 							</div>
 						</li>
 						<li class="active"><a href="#home" data-toggle="tab"><i class="icon-home"></i> Home</a></li>
-						<li><a href="#debug" data-toggle="tab"><i class="icon-wrench"></i> Debug</a></li>
 					</ul>
 		
 					<div class="tab-content">
 						<div class="tab-pane active" id="home">
-							<div class="well"><p>Foshizzle</p></div>
-						</div>
-						<div class="tab-pane" id="debug">
-							<div class="well">
-								<a href="#modal-connect" role="button" class="btn" data-toggle="modal">Connect</a>
-								<a href="#modal-join" role="button" class="btn" data-toggle="modal">Join Room</a>
-							</div>
+							<table id="room-list" class="table table-striped">
+								<thead>
+									<tr>
+										<th>Room</th>
+										<th>Topic</th>
+										<th>Members</th>
+										<th>&nbsp;</th>
+								</thead>
+								<tbody></tbody>
+							</table>
 						</div>
 					</div>
 				
