@@ -37,7 +37,6 @@ function handle( p ) {
 			break;
 		
 		case 'room_info':
-			var id = tabId( p.name );
 			updateRoomList( p );
 			break;
 			
@@ -97,10 +96,6 @@ function handle( p ) {
 		case 'error':
 			console.log( "ERROR!" );
 			console.log( p );
-			//var modal = $('#modal-error');
-			//modal.find('h3').html(p.title);
-			//modal.find('pre').html(p.message);
-			//modal.modal('show');
 			break;
 			
 		default:
