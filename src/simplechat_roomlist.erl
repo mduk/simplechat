@@ -130,6 +130,21 @@ handle_info( { room_event, { _Room, Pid }, { parted, _Room, _Nick } }, S ) ->
 	NewS = S#state{ room_list = NewList },
 	{ noreply, NewS };
 %-------------------------------------------------------------------------------
+% Room topic changed
+% 
+% Update info record
+%-------------------------------------------------------------------------------
+handle_info( { room_event, { _Room, Pid }, { topic_changed, Topic } }, S ) ->
+	OldInfo = proplists:get_value( Pid, S#state.room_list ),
+	List = proplists:delete( Pid, S#state.room_list ),
+	NewInfo = OldInfo#room_info{
+		topic = Topic
+	},
+	gen_event:notify( S#state.event_manager, NewInfo ),
+	NewList = [ { Pid, NewInfo } | List ],
+	NewS = S#state{ room_list = NewList },
+	{ noreply, NewS };
+%-------------------------------------------------------------------------------
 % Received room info proplist
 %
 % Update info with information supplied by room
