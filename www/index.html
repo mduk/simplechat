@@ -23,17 +23,15 @@
 var socket;
 var nick;
 
+/**
+ * Handle messages received down the WebSocket
+ */
 function handle( p ) {
 	switch ( p.type ) {
 		case 'welcome':
 			$('#modal-connect').modal('hide');
-			socket.send( JSON.stringify( {
-				type: 'room_list'
-			} ) );
-			socket.send( JSON.stringify( {
-				type: 'subscribe',
-				stream: 'room_list'
-			} ) );
+			cmd( { type: 'room_list' } );
+			cmd( { type: 'subscribe', stream: 'room_list' } );
 			break;
 		
 		case 'room_info':
@@ -50,37 +48,33 @@ function handle( p ) {
 				var joinBtn = $('#room-list button[data-room="' + room + '"]');
 				joinBtn.addClass( 'btn-danger' );
 				joinBtn.html( '<i class="icon-remove"></i> Part' );
-				joinBtn.attr( 'data-state', 'part' );
+				joinBtn.attr( 'data-type', 'part' );
 				
-				newTab( tabId( room ), room );
-				switchTab( tabId( room ) );
-				
-				socket.send( JSON.stringify( {
-					type: 'member_list',
-					room: room
-				} ) );
+				newTab( mkId( room ), room );
+				switchTab( mkId( room ) );
 				break;
 			}
 			
 			var html = $('<li class="event joined">' + p.client + ' joined</li>');
-			$('#' + tabId( p.room ) + ' ul.stream').append( html );
+			$('#' + mkId( p.room ) + ' ul.stream').append( html );
 			break;
 			
 		case 'parted':
 			if ( p.source == 'client' ) {
-				var btn = $( '#room-list-' + tabId( p.room ) + ' button' );
+				var btn = $( '#room-list-' + mkId( p.room ) + ' button' );
 				btn.toggleClass( 'btn-danger' );
 				btn.html( 'Join' );
-				deleteTab( tabId( p.room ) );
+				btn.attr( 'data-type', 'join' );
+				deleteTab( mkId( p.room ) );
 				break;
 			}
 			var html = $('<li class="event joined">' + p.client + ' parted</li>');
-			$('#' + tabId( p.room ) + ' ul.stream').append( html );
+			$('#' + mkId( p.room ) + ' ul.stream').append( html );
 			break;
 			
 		case 'message':
-			var tab = $('.nav_tabs a[href="#' + tabId( p.room ) + '"]');
-			var pane = $('#' + tabId( p.room ) );
+			var tab = $('.nav_tabs a[href="#' + mkId( p.room ) + '"]');
+			var pane = $('#' + mkId( p.room ) );
 			
 			var html = $('#template-room-message').children().clone();
 			html.find( 'img' ).attr( { 
@@ -93,11 +87,6 @@ function handle( p ) {
 			pane.find( 'ul.stream' ).append( html );
 			break;
 		
-		case 'error':
-			console.log( "ERROR!" );
-			console.log( p );
-			break;
-			
 		default:
 			console.log( 'Unhandled Message!' );
 			console.log( p );
@@ -105,14 +94,32 @@ function handle( p ) {
 	}	
 }
 
-function tabId( id ) {
+function cmd( cmd ) {
+	socket.send( JSON.stringify( cmd ) );
+}
+
+/**
+ * Make ID
+ *
+ * The room names as-is aren't safe to use as html id 
+ * values, this safens them.
+ */
+function mkId( id ) {
 	return id.toLowerCase().replace( /\s/g, "" );
 }
 
+/**
+ * Switch Tab
+ */
 function switchTab( tab ) {
 	$('#rooms .nav-tabs a[href="#' + tab + '"]').click()
 }
 
+/**
+ * New Tab
+ *
+ * Creates a new tab and clones the tab pane template.
+ */
 function newTab( id, label ) {
 	var tab = '<li><a data-toggle="tab" href="#' 
 		+ id 
@@ -121,19 +128,29 @@ function newTab( id, label ) {
 		+ '  <span class="badge">1</span></a></li>';
 		
 	var pane = $('#template-room-pane').children().clone(true);
-	pane.attr( "id", id );
+	pane.attr( 'id', id );
+	pane.attr( 'data-room', label );
 	
 	$('#rooms .nav-tabs').append( tab );
 	$('#rooms .tab-content').append( pane );
 }
 
+/**
+ * Delete Tab
+ */
 function deleteTab( id ) {
 	$('#rooms .nav-tabs a[href="#' + id + '"]').parent( 'li' ).remove();
 	$('#' + id + '').remove();
 }
 
+/**
+ * Update Room List
+ *
+ * Given a room info packet, add/update the appropriate
+ * row in the room list table.
+ */
 function updateRoomList( info ) {
-	var id = tabId( info.name );
+	var id = mkId( info.name );
 	
 	$( '#room-list-' + id ).remove();
 	
@@ -143,9 +160,26 @@ function updateRoomList( info ) {
 	entry.find( '.topic' ).html( info.topic );
 	entry.find( '.members' ).html( info.members );
 	entry.find( 'button' ).attr( 'data-room', info.name );
-	entry.find( 'button' ).attr( 'data-state', 'join' );
+	entry.find( 'button' ).attr( 'data-type', 'join' );
 	
 	$( '#room-list tbody' ).append( entry );	
+}
+
+function updateRoomListButton( room, state ) {
+	var btn = $( '#room-list-' + room + ' button' );
+	switch ( state ) {
+		case 'join':
+			btn.toggleClass( 'btn-success' );
+			btn.toggleClass( 'btn-danger' );
+			btn.html( 'Join' );
+			break;
+		
+		case 'part':
+			btn.toggleClass( 'btn-success' );
+			btn.toggleClass( 'btn-danger' );
+			btn.html( '<i class="icon-remove"></i> Part' );
+			break;
+	}
 }
 
 $( function() {
@@ -163,45 +197,36 @@ $( function() {
 			previous_tab = $( e.relatedTarget );
 		
 		if ( activated_tab.attr( 'href' ) == '#home' ) {
-			socket.send( JSON.stringify( { 
+			cmd( { 
 				type: 'subscribe',
 				stream: 'room_list'
-			} ) );
+			} );
 		}
 		
 		if ( previous_tab.attr( 'href' ) == '#home' ) {
-			socket.send( JSON.stringify( {
+			cmd ({
 				type: 'unsubscribe',
 				stream: 'room_list',
-			} ) );
+			} );
 		}
 	} );
 	
 	// Room List - Join button
 	$( '#template-room-list-entry button' ).on( 'click', function( e ) {
-		var 
+		var
 			btn = $( e.srcElement ),
-			cmd = {
-				type: 'join',
-				room: btn.attr( 'data-room' )
-			};
-		
-		if ( btn.attr( 'data-state' ) == 'part' )
-		{
-			cmd = {
-				type: 'part',
-				room: btn.attr( 'data-room' )
-			};
-		}
-		
-		socket.send( JSON.stringify( cmd ) );
+			room = btn.attr('data-room'),
+			type = btn.attr('data-type'),
+			command = { type: type, room: room },
+			newType = ( type == 'join' ? 'part' : 'join' );
+			
+		cmd( command );
+		//btn.attr( 'data-type', newType );
 	} );
 
 	// Template: Room Tab Pane
 	var pane = $('#template-room-pane');
 	pane.find( '.msg-input button' ).on( 'click', function( e ) {
-		console.log( 'send was clicked');
-		
 		var activeTab = $('#rooms .tab-pane.active');
 		var room = activeTab.attr('id');
 		
@@ -209,16 +234,14 @@ $( function() {
 		var message = input.val();
 		input.val( '' );
 		
-		socket.send( JSON.stringify( {
+		cmd( {
 			type: 'say',
 			room: room,
 			message: message
-		} ) );
+		} );
 	} );
 	pane.find( '.msg-input input' ).keyup( function( e ) {
 	    if ( e.keyCode == 13 ) {
-			console.log( "enter was pressed! going to click..." );
-			console.log(  pane.find( '.msg-input button' ) );
 			pane.find( '.msg-input button' ).click();
 	    }
 	} );
@@ -237,11 +260,11 @@ $( function() {
 		{
 			console.log( 'WebSocket Opened' );
 			
-			socket.send( JSON.stringify( {
+			cmd( {
 				type: "ident",
 				name: nick,
 				password: pass
-			} ) );
+			} );
 		};
 		
 		socket.onmessage = function( wsMsg )
@@ -271,10 +294,10 @@ $( function() {
 		var room = $('#modal-join-room').val();
 		$('#modal-join-room').val('');
 		
-		socket.send( JSON.stringify( {
+		cmd( {
 			type: "join",
 			room: room
-		} ) );
+		} );
 	} );
 	
 	// Modal: Error
@@ -331,7 +354,7 @@ $( function() {
 					<td class="name">Name</td>
 					<td class="topic">Topic</td>
 					<td class="members">42</td>
-					<td><button class="btn pull-right btn-join" data-room="" data-state="">Join</button></td>
+					<td><button class="btn btn-success pull-right btn-join" data-room="" data-type="">Join</button></td>
 				</tr>
 			</table>
 		</div>
@@ -345,7 +368,7 @@ $( function() {
 						<hr/>
 						<div class="input-append msg-input">
 							<input type="text" name="body" style="min-height: 30px; width: 90%;"/>
-							<button class="btn btn-primary">Send</button>
+							<button class="btn btn-primary" data-room="">Send</button>
 						</div>
 					</div>
 				</div>
