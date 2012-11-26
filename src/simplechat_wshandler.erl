@@ -267,7 +267,8 @@ websocket_info( Msg, Req, State ) ->
 %===============================================================================
 % Connection closed
 %-------------------------------------------------------------------------------
-websocket_terminate( _Reason, _Req, #state{} ) ->
+websocket_terminate( _Reason, _Req, #state{ client_pid=Pid } ) ->
+	simplechat_client:quit( Pid ),
 	ok.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
