@@ -167,7 +167,8 @@ websocket_handle( { text, Msg }, Req, State ) ->
 				
 				% Joined a room the client is already a member of
 				{ { join, _ }, { ok, _ } } ->
-					{ ok, Req, State, hibernate };
+					Reply = simplechat_protocol:encode( { error, "Already in room" } ),
+					{ reply, { text, Reply }, Req, State, hibernate };
 				
 				% Any successful with a result term
 				{ _, { ok, Result } } ->
