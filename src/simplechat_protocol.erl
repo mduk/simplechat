@@ -26,6 +26,11 @@ decode( { unsubscribe, Props } ) ->
 	Stream = proplists:get_value( <<"stream">>, Props ),
 	{ unsubscribe, Stream };
 %-------------------------------------------------------------------------------
+% Parse a 'joined_rooms' message
+%-------------------------------------------------------------------------------
+decode( { joined_rooms, _ } ) ->
+	joined_rooms;
+%-------------------------------------------------------------------------------
 % Parse a 'room_list' message
 %-------------------------------------------------------------------------------
 decode( { room_list, _ } ) ->
@@ -111,6 +116,15 @@ encode( #room_info{ name=Name, topic=Topic, members=Members } ) ->
 		{ name, Name },
 		{ topic, Topic },
 		{ members, Members }
+	] } );
+% ------------------------------------------------------------------------------
+% joined_rooms
+% ------------------------------------------------------------------------------
+encode( { joined_rooms, Rooms } ) ->
+	RoomNames = lists:map( fun( { _, N } ) -> N end, Rooms ),
+	mochijson2:encode( { struct, [
+		{ type, joined_rooms },
+		{ rooms, RoomNames }
 	] } );
 % ------------------------------------------------------------------------------
 % Server Event: room_opened
