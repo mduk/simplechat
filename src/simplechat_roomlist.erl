@@ -93,34 +93,59 @@ handle_call( _, _, S ) ->
 % A room opened
 %-------------------------------------------------------------------------------
 handle_info( { server_event, { room_opened, Room } }, S ) -> 
-	io:format("Registering new room...~n"),
 	{ ok, Pid } = simplechat_room_sup:room( Room ),
 	simplechat_room:watch( Pid ),
 	simplechat_room:info( Pid ),
 	Element = { Pid, #room_info{ pid = Pid } },
-	S2 = S#state{ room_list = [ Element | S#state.room_list ] },
-	{ noreply, S2 };
+	NewS = S#state{ room_list = [ Element | S#state.room_list ] },
+	{ noreply, NewS };
 %-------------------------------------------------------------------------------
-% Received room info
+% Someone joined a room
+%
+% Add one to the member count
 %-------------------------------------------------------------------------------
-handle_info( { room, { _, Pid }, info, Proplist }, S ) ->
-	io:format("Updating room info...~n"),
-	
+handle_info( { room_event, { _Room, Pid }, { joined, _Room, _Nick } }, S ) ->
 	OldInfo = proplists:get_value( Pid, S#state.room_list ),
 	List = proplists:delete( Pid, S#state.room_list ),
-	
+	NewInfo = OldInfo#room_info{
+		members = OldInfo#room_info.members + 1
+	},
+	gen_event:notify( S#state.event_manager, NewInfo ),
+	NewList = [ { Pid, NewInfo } | List ],
+	NewS = S#state{ room_list = NewList },
+	{ noreply, NewS };
+%-------------------------------------------------------------------------------
+% Someone parted a room
+% 
+% Subtract one from the member count
+%-------------------------------------------------------------------------------
+handle_info( { room_event, { _Room, Pid }, { parted, _Room, _Nick } }, S ) ->
+	OldInfo = proplists:get_value( Pid, S#state.room_list ),
+	List = proplists:delete( Pid, S#state.room_list ),
+	NewInfo = OldInfo#room_info{
+		members = OldInfo#room_info.members - 1
+	},
+	gen_event:notify( S#state.event_manager, NewInfo ),
+	NewList = [ { Pid, NewInfo } | List ],
+	NewS = S#state{ room_list = NewList },
+	{ noreply, NewS };
+%-------------------------------------------------------------------------------
+% Received room info proplist
+%
+% Update info with information supplied by room
+%-------------------------------------------------------------------------------
+handle_info( { room, { _, Pid }, info, Proplist }, S ) ->
+	OldInfo = proplists:get_value( Pid, S#state.room_list ),
+	List = proplists:delete( Pid, S#state.room_list ),
 	NewInfo = OldInfo#room_info{
 		name = proplists:get_value( name, Proplist ),
 		topic = proplists:get_value( topic, Proplist ),
 		members = proplists:get_value( members, Proplist )
 	},
-	
 	gen_event:notify( S#state.event_manager, NewInfo ),
-	
 	NewList = [ { Pid, NewInfo } | List ],
-	
-	S2 = S#state{ room_list = NewList },
-	{ noreply, S2 };
+	NewS = S#state{ room_list = NewList },
+	{ noreply, NewS };
 %-------------------------------------------------------------------------------
 % Catch All
 %-------------------------------------------------------------------------------
