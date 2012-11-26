@@ -119,7 +119,7 @@ handle_call( room_list, _From, State ) ->
 % List of rooms the client has joined
 %-------------------------------------------------------------------------------
 handle_call( joined_rooms, _From, State = #state{ rooms = Rooms } ) ->
-	{ reply, { ok, { joined_rooms, Rooms } }, State };
+	{ reply, { joined_rooms, Rooms }, State };
 %-------------------------------------------------------------------------------
 % Join Room
 %-------------------------------------------------------------------------------
