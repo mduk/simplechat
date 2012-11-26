@@ -28,12 +28,6 @@ function handleClient( p ) {
 			// Hide the join modal
 			$('#modal-join').modal('hide');
 			
-			// Update room list button
-			var joinBtn = $('#room-list button[data-room="' + room + '"]');
-			joinBtn.addClass( 'btn-danger' );
-			joinBtn.html( '<i class="icon-remove"></i> Part' );
-			joinBtn.attr( 'data-type', 'part' );
-			
 			// Create a new tab
 			newTab( mkId( room ), room );
 			
@@ -45,10 +39,6 @@ function handleClient( p ) {
 		 * Parted a room
 		 */
 		case 'parted':
-			var btn = $( '#room-list-' + mkId( p.room ) + ' button' );
-			btn.toggleClass( 'btn-danger' );
-			btn.html( 'Join' );
-			btn.attr( 'data-type', 'join' );
 			deleteTab( mkId( p.room ) );
 			break;
 		
