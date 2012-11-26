@@ -269,10 +269,7 @@ $( function() {
 		
 		socket.onmessage = function( wsMsg )
 		{
-			console.log( 'Recv: ' + wsMsg.data );
-		
-			var msg = JSON.parse( wsMsg.data );
-			handle( msg );
+			handle( JSON.parse( wsMsg.data ) );
 		};
 		
 		socket.onerror = function( e )
