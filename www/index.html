@@ -62,7 +62,7 @@ function newTab( id, label ) {
 		
 	var pane = $('#template-room-pane').children().clone(true);
 	pane.attr( 'id', id );
-	pane.attr( 'data-room', label );
+	pane.find('button').attr( 'data-room', label );
 	
 	$('#rooms .nav-tabs').append( tab );
 	$('#rooms .tab-content').append( pane );
@@ -177,7 +177,7 @@ $( function() {
 	var pane = $('#template-room-pane');
 	pane.find( '.msg-input button' ).on( 'click', function( e ) {
 		var activeTab = $('#rooms .tab-pane.active');
-		var room = activeTab.attr('id');
+		var room = activeTab.find('button').attr('data-room');
 		
 		var input = activeTab.find('input[name=body]');
 		var message = input.val();
