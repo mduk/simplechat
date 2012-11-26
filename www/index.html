@@ -196,18 +196,14 @@ $( function() {
 			activated_tab = $( e.target ),
 			previous_tab = $( e.relatedTarget );
 		
+		// Move into home tab - subscribe to room list
 		if ( activated_tab.attr( 'href' ) == '#home' ) {
-			cmd( { 
-				type: 'subscribe',
-				stream: 'room_list'
-			} );
+			cmd( { type: 'subscribe', stream: 'room_list' } );
 		}
 		
+		// Move away from home tab - unsubscribe from room list
 		if ( previous_tab.attr( 'href' ) == '#home' ) {
-			cmd ({
-				type: 'unsubscribe',
-				stream: 'room_list',
-			} );
+			cmd( { type: 'unsubscribe', stream: 'room_list' } );
 		}
 	} );
 	
