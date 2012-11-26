@@ -125,6 +125,16 @@ function updateRoomListButton( room, state ) {
 	}
 }
 
+function roomListSubscribe() {
+	console.log( 'Subscribing to room list...' );
+	cmd( { type: 'subscribe', stream: 'room_list' } );
+}
+
+function roomListUnsubscribe() {
+	console.log( 'Unsubscribing from room list...' );
+	cmd( { type: 'subscribe', stream: 'room_list' } );
+}
+
 $( function() {
 
 	// Tabs - Hide notification count
@@ -141,12 +151,12 @@ $( function() {
 		
 		// Move into home tab - subscribe to room list
 		if ( activated_tab.attr( 'href' ) == '#home' ) {
-			cmd( { type: 'subscribe', stream: 'room_list' } );
+			roomListSubscribe();
 		}
 		
 		// Move away from home tab - unsubscribe from room list
 		if ( previous_tab.attr( 'href' ) == '#home' ) {
-			cmd( { type: 'unsubscribe', stream: 'room_list' } );
+			roomListUnsubscribe();
 		}
 	} );
 	
