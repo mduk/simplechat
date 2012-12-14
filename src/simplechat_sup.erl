@@ -3,7 +3,7 @@
 -behaviour( supervisor ).
 -export( [ init/1 ] ).
 
--export( [ start_link/0, start_worker/4, start_worker/3 ] ).
+-export( [ start_link/0, start_worker/4, start_worker/3, start_supervisor/3 ] ).
 
 start_link() ->
 	supervisor:start_link( { local, ?MODULE }, ?MODULE, [] ).
@@ -14,6 +14,11 @@ start_worker( M, F, A ) ->
 start_worker( Id, M, F, A ) ->
 	Mfa = { M, F, A },
 	Child = { Id,  Mfa, permanent, 5000, worker, [ M ] },
+	supervisor:start_child( ?MODULE, Child ).
+
+start_supervisor( M, F, A ) ->
+	Mfa = { M, F, A },
+	Child = { M,  Mfa, permanent, 5000, supervisor, [ M ] },
 	supervisor:start_child( ?MODULE, Child ).
 
 init( _ ) ->
