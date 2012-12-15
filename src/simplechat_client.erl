@@ -16,6 +16,7 @@
 	joined_rooms/1, 
 	join/2, 
 	part/2, 
+	say/3,
 	member_list/2,
 	quit/1 
 ] ).
@@ -53,6 +54,9 @@ join( Client, Room ) ->
 
 part( Client, Room ) ->
 	gen_server:call( Client, { part, Room } ).
+
+say( Client, Room, Message ) ->
+	gen_server:call( Client, { say, Room, Message } ).
 
 member_list( Client, Room ) ->
 	gen_server:call( Client, { member_list, Room } ).
