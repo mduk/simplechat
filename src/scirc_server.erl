@@ -18,4 +18,4 @@ loop( Sock ) ->
 	{ ok, ClientSock } = gen_tcp:accept( Sock ),
 	{ ok, Pid } = scirc_client_sup:start_client( ClientSock ),
 	ok = gen_tcp:controlling_process( ClientSock, Pid ),
-	?MODULE:loop( Sock ).
+	loop( Sock ).
